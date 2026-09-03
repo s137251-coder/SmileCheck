@@ -82,6 +82,37 @@ lib/
 └── widgets/                     smile guide, scan overlay, score ring, chrome
 ```
 
+## Platforms
+
+Android is built, run and verified. iOS is scaffolded but unverified — it was
+set up on a Windows machine, where Flutter cannot build or run an iOS target.
+
+In place:
+
+* `ios/` generated, bundle identifier `com.smilecheck.app`, matching Android.
+* `NSCameraUsageDescription` in `Info.plist`. Without it iOS terminates the app
+  the moment the camera is touched.
+* Portrait locked in `Info.plist`, matching the orientation the app sets at
+  runtime.
+* English and Hebrew `InfoPlist.strings` under `ios/Runner/{en,he}.lproj/`.
+* `tflite_flutter` ships an iOS pod (TensorFlowLiteC), so on-device inference is
+  supported; `camera_avfoundation` and `permission_handler_apple` come with
+  their plugins.
+
+Needs a Mac with Xcode, and is not done:
+
+1. **Add the localized strings to the target.** `en.lproj/InfoPlist.strings` and
+   `he.lproj/InfoPlist.strings` exist on disk but are not referenced in
+   `project.pbxproj`, so they are not yet bundled. In Xcode, add both files to
+   the Runner target and add `he` to the project's localizations. Until then the
+   permission prompt shows the English string from `Info.plist` in every
+   language.
+2. **First build.** `flutter build ios` generates the `Podfile` and runs
+   `pod install`; neither exists yet.
+3. **Signing.** Set a development team and provisioning profile.
+4. **Run it.** Simulators have no camera, so the permission flow and the preview
+   need a physical device.
+
 ## Development
 
 ```bash
