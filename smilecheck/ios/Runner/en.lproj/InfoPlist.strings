@@ -1,0 +1,5 @@
+/* Shown by iOS in the camera permission prompt. */
+"NSCameraUsageDescription" = "SmileCheck uses the camera to look at your smile. The photo is analysed on this device and is never uploaded or stored.";
+
+/* Name under the app icon. */
+"CFBundleDisplayName" = "SmileCheck";
