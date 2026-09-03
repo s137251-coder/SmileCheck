@@ -3,11 +3,12 @@ import 'dart:io';
 import 'package:image/image.dart' as img;
 
 class ImagePreprocessor {
-  Future<List<List<List<double>>>> preprocess(
+  Future<List<List<List<dynamic>>>> preprocess(
     String imagePath, {
     int width = 224,
     int height = 224,
     int channels = 3,
+    bool asUint8 = false,
   }) async {
     final bytes = await File(imagePath).readAsBytes();
     final decoded = img.decodeImage(bytes);
@@ -22,15 +23,24 @@ class ImagePreprocessor {
       interpolation: img.Interpolation.cubic,
     );
 
-    final tensor = List<List<List<double>>>.generate(
+    final tensor = List<List<List<dynamic>>>.generate(
       height,
-      (y) => List<List<double>>.generate(
+      (y) => List<List<dynamic>>.generate(
         width,
         (x) {
           final pixel = resized.getPixel(x, y);
           final r = (pixel.r / 255.0).clamp(0.0, 1.0).toDouble();
           final g = (pixel.g / 255.0).clamp(0.0, 1.0).toDouble();
           final b = (pixel.b / 255.0).clamp(0.0, 1.0).toDouble();
+          if (asUint8) {
+            final red = (pixel.r).clamp(0, 255).toInt();
+            final green = (pixel.g).clamp(0, 255).toInt();
+            final blue = (pixel.b).clamp(0, 255).toInt();
+            if (channels == 1) {
+              return [((red + green + blue) / 3).round()];
+            }
+            return [red, green, blue];
+          }
           if (channels == 1) {
             final gray = ((r + g + b) / 3.0).clamp(0.0, 1.0).toDouble();
             return [gray];
@@ -57,7 +67,10 @@ class ImagePreprocessor {
     double contrast = 0;
     int count = 0;
 
+    final sampleStep = (decoded.width * decoded.height / 200000).ceil().clamp(1, 100);
+    var pixelIndex = 0;
     for (final pixel in decoded) {
+      if (pixelIndex++ % sampleStep != 0) continue;
       final r = pixel.r;
       final g = pixel.g;
       final b = pixel.b;
@@ -74,7 +87,7 @@ class ImagePreprocessor {
     return quality.clamp(0.0, 100.0).toDouble();
   }
 
-  List<List<List<double>>> _emptyTensor({
+  List<List<List<dynamic>>> _emptyTensor({
     int width = 224,
     int height = 224,
     int channels = 3,

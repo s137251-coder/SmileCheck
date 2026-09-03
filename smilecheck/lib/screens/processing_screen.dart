@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../models/analysis_result.dart';
 import '../services/analysis_service.dart';
 import 'result_screen.dart';
 
@@ -23,7 +26,25 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   Future<void> _runProcessing() async {
     final analysisService = context.read<AnalysisService>();
     await Future<void>.delayed(const Duration(milliseconds: 900));
-    final result = await analysisService.analyzeImage(imagePath: widget.imagePath);
+    late final AnalysisResult result;
+
+    try {
+      result = await analysisService
+          .analyzeImage(imagePath: widget.imagePath)
+          .timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      result = const AnalysisResult(
+        score: 0,
+        label: 'Analysis timed out',
+        notes: 'The image could not be processed in time. Please try again.',
+      );
+    } on Object catch (error) {
+      result = AnalysisResult(
+        score: 0,
+        label: 'Analysis failed',
+        notes: 'The image could not be analyzed: $error',
+      );
+    }
 
     if (!mounted) return;
 

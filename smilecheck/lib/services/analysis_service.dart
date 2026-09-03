@@ -18,37 +18,45 @@ class AnalysisService {
     await _loadModelIfAvailable();
 
     if (isModelLoaded && imagePath != null) {
-      final inputShape = _interpreter!.getInputTensor(0).shape;
-      final width = inputShape.length >= 3 ? inputShape[2].toInt() : 224;
-      final height = inputShape.length >= 3 ? inputShape[1].toInt() : 224;
-      final channels = inputShape.length >= 4 ? inputShape[3].toInt() : 3;
+      try {
+        final inputShape = _interpreter!.getInputTensor(0).shape;
+        final inputType = _interpreter!.getInputTensor(0).type.toString().toLowerCase();
+        final width = inputShape.length >= 3 ? inputShape[2].toInt() : 224;
+        final height = inputShape.length >= 3 ? inputShape[1].toInt() : 224;
+        final channels = inputShape.length >= 4 ? inputShape[3].toInt() : 3;
 
-      final tensor = await _preprocessor.preprocess(
-        imagePath,
-        width: width,
-        height: height,
-        channels: channels,
-      );
-      final input = [tensor];
-
-      final output = [List.filled(2, 0.0)];
-      _interpreter!.run(input, output);
-
-      final raw = output.first;
-      if (raw.isNotEmpty) {
-        final cleanScore = (raw[0] as num).toDouble();
-        final dirtyScore = (raw[1] as num).toDouble();
-        final modelProbability = cleanScore / (cleanScore + dirtyScore + 1e-8);
-        final score = (modelProbability * 100).clamp(0.0, 100.0);
-
-        final result = AnalysisResult(
-          score: score,
-          label: score >= 70 ? 'Healthy smile pattern' : 'Food particles detected',
-          notes: 'Model inference complete using the local SmileCheck TFLite model.',
+        final tensor = await _preprocessor.preprocess(
+          imagePath,
+          width: width,
+          height: height,
+          channels: channels,
+          asUint8: inputType.contains('uint8'),
         );
+        final outputShape = _interpreter!.getOutputTensor(0).shape;
+        final outputSize = outputShape.isNotEmpty ? outputShape.last : 2;
+        final input = [tensor];
+        final output = [List.filled(outputSize, 0.0)];
+        _interpreter!.run(input, output);
 
-        latestResult = result;
-        return result;
+        final raw = output.first;
+        if (raw.length >= 2) {
+          final cleanScore = (raw[0] as num).toDouble();
+          final dirtyScore = (raw[1] as num).toDouble();
+          final modelProbability = cleanScore / (cleanScore + dirtyScore + 1e-8);
+          final score = (modelProbability * 100).clamp(0.0, 100.0);
+
+          final result = AnalysisResult(
+            score: score,
+            label: score >= 70 ? 'Healthy smile pattern' : 'Food particles detected',
+            notes: 'Model inference complete using the local SmileCheck TFLite model.',
+          );
+
+          latestResult = result;
+          return result;
+        }
+      } on Object catch (_) {
+        _interpreter?.close();
+        _interpreter = null;
       }
     }
 
