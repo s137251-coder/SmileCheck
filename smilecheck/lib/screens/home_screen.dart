@@ -99,7 +99,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   String _hintFor(CameraService camera) {
     if (_capturing) return 'Hold still...';
     if (camera.isReady) return 'Line your smile up inside the frame';
-    if (camera.isBusy) return 'Getting the camera ready';
+    // Idle counts as pending, matching the spinner the fallback shows, so the
+    // hint can never contradict the state above it.
+    if (camera.isBusy || camera.status == CameraStatus.idle) {
+      return 'Getting the camera ready';
+    }
     return 'Camera unavailable';
   }
 }

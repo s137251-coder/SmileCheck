@@ -182,6 +182,14 @@ class CameraService extends ChangeNotifier {
   /// Releases the camera while the app is backgrounded and reopens it after,
   /// which is what Android requires to keep the preview alive across resumes.
   Future<void> handleLifecycle(AppLifecycleState state) async {
+    // Resume is handled first and unconditionally: pausing leaves the
+    // controller null, so a null check ahead of this would strand the app on
+    // an empty preview for the rest of the session.
+    if (state == AppLifecycleState.resumed) {
+      await initialize();
+      return;
+    }
+
     final controller = _controller;
     if (controller == null || !controller.value.isInitialized) return;
 
@@ -190,8 +198,6 @@ class CameraService extends ChangeNotifier {
       await controller.dispose();
       _controller = null;
       _set(CameraStatus.idle, '');
-    } else if (state == AppLifecycleState.resumed) {
-      await initialize();
     }
   }
 
