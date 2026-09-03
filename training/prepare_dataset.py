@@ -25,6 +25,7 @@ import shutil
 from pathlib import Path
 
 from contract import CLASS_NAMES
+from synthesize_dirty import SYNTH_TAG
 
 SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
@@ -61,6 +62,17 @@ def main() -> int:
         if not images:
             raise SystemExit(f"No images in {source}")
 
+        # Synthetic images never enter val or test: they would measure the
+        # synthesiser instead of the problem. They are routed to train
+        # wholesale, and only the real images are split.
+        synthetic = [p for p in images if SYNTH_TAG in p.name]
+        images = [p for p in images if SYNTH_TAG not in p.name]
+        if not images:
+            raise SystemExit(
+                f"{source} contains only synthetic images; real photos are "
+                f"needed for val and test"
+            )
+
         rng.shuffle(images)
         total = len(images)
         n_val = max(1, round(total * args.val_fraction))
@@ -73,7 +85,7 @@ def main() -> int:
         splits = {
             "val": images[:n_val],
             "test": images[n_val : n_val + n_test],
-            "train": images[n_val + n_test :],
+            "train": images[n_val + n_test :] + synthetic,
         }
 
         for split, files in splits.items():

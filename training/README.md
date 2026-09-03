@@ -18,10 +18,35 @@ py -3.12 -m venv .venv
 pip install -r requirements.txt
 ```
 
+## Where the images come from
+
+The two classes have opposite availability, and that shapes everything else.
+
+**`clean` is downloadable.** Roboflow Universe carries casual smile and mouth
+photos (a 2,093-image `smile` set, `mouth-seg`, `open-mouth`), which are close
+to the app's own domain. Open dental sets such as AlphaDent add more.
+
+**`dirty` is not.** Food residue on teeth is not a clinical category, so no
+research dataset covers it. Two apparent sources do not work:
+
+* *Clinical dental datasets* (caries, gingivitis, plaque segmentation) are
+  intraoral photographs taken with retractors and professional lighting from a
+  few centimetres away. The app takes arm's-length selfies. A model trained on
+  one does not transfer to the other, and plaque is not food debris.
+* *Stock libraries* do carry the right images, but the real supply is far
+  smaller than the search counts suggest, and a stock licence covers publication
+  of the photograph, not its use as training data.
+
+**Check licences before training.** CelebA is restricted to non-commercial
+research and the restriction extends to derived data, which includes model
+weights. FFHQ's images are CC BY-NC and the dataset is CC BY-NC-SA 4.0. If
+SmileCheck is going to Google Play, neither can be in its training set.
+
 ## 1. Collect photos
 
-This is the real cost of the project. There is no public dataset of food residue
-on teeth, so the images have to be collected.
+Given the above, the practical route is: obtain or photograph clean smiles, then
+synthesise the positive class from them with `synthesize_dirty.py`, keeping a
+small set of *real* residue photos aside for validation and test.
 
 ```
 raw/
@@ -51,11 +76,36 @@ with explicit agreement, and keep them out of the repository:
 `training/.gitignore` already excludes `raw/` and `dataset/`, which matches the
 app's own promise that images stay on the device.
 
+## 1b. Synthesise the positive class
+
+```bash
+python synthesize_dirty.py --clean raw/clean --out raw/dirty --per-image 3
+```
+
+Finds the teeth in each clean photo and composites irregular, blurred,
+food-coloured lumps near the gum line. Every output is named `__synth`.
+
+This multiplies a small clean set into a usable training set, but it cannot tell
+you whether the model works: trained on synthetic residue alone, a classifier
+learns the synthesiser. So the tooling enforces the separation rather than
+trusting you to remember it — `prepare_dataset.py` routes every `__synth` file
+into `train`, and `verify_split.py` fails if one reaches `val` or `test`.
+
+Which means you still need real `dirty` photos, but only tens of them, for
+measurement rather than training. Around 30 in the test set is the point below
+which the score is mostly noise, and `verify_split.py` warns when you are under
+it.
+
 ## 2. Split
 
 ```bash
 python prepare_dataset.py --raw raw --out dataset
+python verify_split.py --dataset dataset
 ```
+
+`verify_split.py` audits the result: it fails on a synthetic image in val or
+test, and on the same photo appearing in two splits. Both ruin a model while
+leaving the accuracy number looking healthy.
 
 Splits per class so both classes keep their proportions, seeded so re-running
 gives the same result. Prints the class balance, which is worth reading — real
