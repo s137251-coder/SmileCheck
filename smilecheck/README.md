@@ -82,6 +82,38 @@ lib/
 └── widgets/                     smile guide, scan overlay, score ring, chrome
 ```
 
+## Release signing
+
+Release builds are signed with a real key when `android/key.properties` exists,
+and fall back to debug keys when it does not, so CI and `flutter run --release`
+keep working on machines with no keystore. The fallback logs a warning rather
+than happening quietly.
+
+One-time setup:
+
+```bat
+keytool -genkey -v -keystore %USERPROFILE%\smilecheck-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias smilecheck
+
+copy android\key.properties.example android\key.properties
+```
+
+Fill in the paths and passwords. `key.properties`, `*.jks` and `*.keystore` are
+gitignored.
+
+Keep the keystore backed up somewhere durable and never regenerate it: Google
+Play rejects an update signed with a different key, and there is no recovery
+path. Save `key.properties` as UTF-8 **without** a BOM — with one, Java parses
+the first key as U+FEFF followed by `storeFile`, and the build fails; the
+build reports that case by name.
+
+Check which key an APK actually carries:
+
+```bash
+apksigner verify --print-certs build/app/outputs/flutter-apk/app-release.apk
+```
+
+`CN=Android Debug` means the fallback was used and the APK cannot be uploaded.
+
 ## Development
 
 ```bash

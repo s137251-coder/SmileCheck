@@ -1,0 +1,18 @@
+# Copy to android/key.properties and fill in. That file is gitignored and must
+# stay that way: it holds the passwords to the key that identifies this app on
+# Google Play.
+#
+# Generate the keystore first (one time, and never regenerate it — Play rejects
+# an update signed with a different key, with no recovery):
+#
+#   keytool -genkey -v -keystore %USERPROFILE%\smilecheck-release.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias smilecheck
+#
+# Keep the .jks outside the repository and back it up somewhere durable.
+
+# Path to the keystore, absolute or relative to the android/ directory.
+storeFile=C:/Users/you/smilecheck-release.jks
+
+storePassword=
+keyAlias=smilecheck
+keyPassword=
