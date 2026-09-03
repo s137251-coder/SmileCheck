@@ -76,14 +76,52 @@ with explicit agreement, and keep them out of the repository:
 `training/.gitignore` already excludes `raw/` and `dataset/`, which matches the
 app's own promise that images stay on the device.
 
-## 1b. Synthesise the positive class
+## 1b. Generate the positive class
+
+Two ways, sharing the same teeth-finding code, the same `__synth` tag and the
+same guarantee that nothing generated reaches val or test.
+
+### Inpainting (better, costs money)
+
+```bash
+# offline first: check the masks and framing without spending anything
+python inpaint_dirty.py --clean raw/clean --out raw/dirty --dry-run
+
+set STABILITY_API_KEY=...
+python inpaint_dirty.py --clean raw/clean --out raw/dirty --per-image 3
+```
+
+Masks the teeth in a real photo and asks a diffusion model to paint residue
+there. Background, lighting, skin and face stay real; only the masked region is
+generated.
+
+That distinction is the whole point. If the positive class were generated whole
+and the negative class photographed, the classifier would learn to separate
+rendered pixels from camera pixels. That is a much easier problem, it scores
+near-perfectly in validation, and it fails on the first real user. Editing one
+region of a real photo removes the shortcut, because both classes come from the
+same source frames. For the same reason, never generate only one class from a
+source set you do not also use for the other.
+
+`--dry-run` needs no key and makes no calls: it writes the masks to
+`<out>/masks/` and a locally composited preview for each image, so the framing
+can be judged first. Two guards stand between a typo and a bill: a missing key
+stops the run, and `--max-requests` (default 60) refuses a batch larger than the
+cap.
+
+Providers are `stability` (default) and `openai`. Each is one function; if an
+API changes, that function is the only thing to fix.
+
+### Compositing (free, cruder)
 
 ```bash
 python synthesize_dirty.py --clean raw/clean --out raw/dirty --per-image 3
 ```
 
+
 Finds the teeth in each clean photo and composites irregular, blurred,
-food-coloured lumps near the gum line. Every output is named `__synth`.
+food-coloured lumps near the gum line. No dependencies beyond numpy and Pillow,
+and no cost, but the result is obviously painted at close range.
 
 This multiplies a small clean set into a usable training set, but it cannot tell
 you whether the model works: trained on synthetic residue alone, a classifier
