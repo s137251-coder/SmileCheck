@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'app.dart';
+import 'core/locale_controller.dart';
 import 'services/analysis_service.dart';
 import 'services/camera_service.dart';
 
@@ -21,9 +22,14 @@ Future<void> main() async {
   );
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
+  // Resolved before the first frame so the app never flashes the wrong
+  // language or the wrong text direction on start-up.
+  final localeController = await LocaleController.restore();
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider<LocaleController>.value(value: localeController),
         // Both services outlive every screen: the camera keeps its controller
         // across navigation, and the interpreter is loaded only once.
         ChangeNotifierProvider<CameraService>(create: (_) => CameraService()),

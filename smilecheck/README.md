@@ -49,11 +49,33 @@ verdict was produced.
 4. Normalise to a 0-100 score.
 5. Render the verdict, or the demo-mode explanation.
 
+## Languages
+
+The interface ships in English and Hebrew, switchable from the button in the
+camera top bar. The choice is remembered on the device; before the user picks,
+the device language is used, falling back to English.
+
+Hebrew renders right-to-left throughout, which Flutter derives from the active
+locale. The product name stays in Latin script in both languages.
+
+Strings live in `lib/l10n/app_en.arb` and `lib/l10n/app_he.arb`. The services
+and models never hold user-facing prose: they emit a `ResultReason` or
+`CameraIssue` code plus a parameter, and `lib/core/l10n_text.dart` renders it in
+the active language. Adding a language means adding one `.arb` file and one
+entry to `LocaleController.supported`.
+
+Regenerate the bindings after editing an `.arb`:
+
+```bash
+flutter gen-l10n
+```
+
 ## Project layout
 
 ```
 lib/
-├── core/app_theme.dart          design tokens, typography, component themes
+├── core/                        theme, locale controller, reason-to-text map
+├── l10n/                        .arb catalogues and generated bindings
 ├── models/                      AnalysisResult, ImageStats, thresholds
 ├── screens/                     splash, home (camera), processing, result
 ├── services/                    camera, analysis, image preprocessing

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/ui_bits.dart';
 import 'home_screen.dart';
 
@@ -61,6 +62,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = L.of(context);
+
     return Scaffold(
       body: DecoratedBox(
         decoration: const BoxDecoration(gradient: AppColors.backdrop),
@@ -83,17 +86,20 @@ class _SplashScreenState extends State<SplashScreen>
                   child: Column(
                     children: [
                       Text(
+                        // The product name stays in Latin script in both
+                        // languages; it is the brand, not a translated word.
                         'SmileCheck',
+                        textDirection: TextDirection.ltr,
                         style: Theme.of(context)
                             .textTheme
                             .displaySmall
                             ?.copyWith(letterSpacing: -1),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
-                        'A private smile check before you walk out',
+                      Text(
+                        l.tagline,
                         textAlign: TextAlign.center,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 15,
                           color: AppColors.textSecondary,
                         ),
@@ -104,9 +110,9 @@ class _SplashScreenState extends State<SplashScreen>
                 const Spacer(),
                 FadeTransition(
                   opacity: _textFade,
-                  child: const InfoPill(
+                  child: InfoPill(
                     icon: Icons.lock_outline_rounded,
-                    label: 'Runs entirely on this device',
+                    label: l.privacyOnDevice,
                   ),
                 ),
                 const SizedBox(height: 26),

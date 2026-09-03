@@ -20,6 +20,13 @@ enum CameraStatus {
   failed,
 }
 
+/// The specific fault behind [CameraStatus.failed], or a non-fatal notice.
+///
+/// A code rather than a sentence, so the UI can render it in the active
+/// language; [CameraService.issueDetail] carries the untranslated technical
+/// text alongside it.
+enum CameraIssue { none, listFailed, startFailed, captureFailed, noFlash }
+
 /// Owns the camera lifecycle and publishes its state.
 ///
 /// Held for the lifetime of the app by a provider. Screens must never dispose
@@ -31,15 +38,17 @@ class CameraService extends ChangeNotifier {
   int _cameraIndex = 0;
 
   CameraStatus _status = CameraStatus.idle;
-  String _message = '';
+  CameraIssue _issue = CameraIssue.none;
+  String? _issueDetail;
   bool _torchOn = false;
   bool _disposed = false;
 
   CameraController? get controller => _controller;
   CameraStatus get status => _status;
+  CameraIssue get issue => _issue;
 
-  /// User-facing explanation for the current non-ready state.
-  String get message => _message;
+  /// Untranslated technical detail for [issue], such as an exception message.
+  String? get issueDetail => _issueDetail;
 
   bool get isReady =>
       _status == CameraStatus.ready &&
@@ -61,8 +70,8 @@ class CameraService extends ChangeNotifier {
 
   /// Requests permission and opens the preferred camera.
   ///
-  /// Never throws: the outcome is published through [status] and [message] so
-  /// a caller cannot accidentally show "ready" over a failed camera.
+  /// Never throws: the outcome is published through [status] and [issue] so a
+  /// caller cannot accidentally show "ready" over a failed camera.
   Future<void> initialize() async {
     if (_status == CameraStatus.initialising) return;
 
@@ -70,23 +79,15 @@ class CameraService extends ChangeNotifier {
     // already-open camera is left exactly as it is.
     if (isReady) return;
 
-    _set(CameraStatus.initialising, 'Preparing camera and permissions...');
+    _set(CameraStatus.initialising);
 
     final permission = await Permission.camera.request();
     if (permission.isPermanentlyDenied || permission.isRestricted) {
-      _set(
-        CameraStatus.permissionBlocked,
-        'Camera access is blocked for SmileCheck. Enable it in system '
-        'settings to run a check.',
-      );
+      _set(CameraStatus.permissionBlocked);
       return;
     }
     if (!permission.isGranted) {
-      _set(
-        CameraStatus.permissionDenied,
-        'SmileCheck needs the camera to look at your smile. Nothing leaves '
-        'your device.',
-      );
+      _set(CameraStatus.permissionDenied);
       return;
     }
 
@@ -95,12 +96,13 @@ class CameraService extends ChangeNotifier {
         _cameras = await availableCameras();
       }
     } on Object catch (error) {
-      _set(CameraStatus.failed, 'The camera list could not be read: $error');
+      _set(CameraStatus.failed,
+          issue: CameraIssue.listFailed, detail: '$error');
       return;
     }
 
     if (_cameras.isEmpty) {
-      _set(CameraStatus.noCameraFound, 'No camera was found on this device.');
+      _set(CameraStatus.noCameraFound);
       return;
     }
 
@@ -129,16 +131,16 @@ class CameraService extends ChangeNotifier {
 
       _controller = controller;
       _torchOn = false;
-      _set(CameraStatus.ready, '');
+      _set(CameraStatus.ready);
     } on CameraException catch (error) {
       _controller = null;
-      _set(
-        CameraStatus.failed,
-        error.description ?? 'The camera could not be started.',
-      );
+      _set(CameraStatus.failed,
+          issue: CameraIssue.startFailed,
+          detail: error.description ?? error.code);
     } on Object catch (error) {
       _controller = null;
-      _set(CameraStatus.failed, 'The camera could not be started: $error');
+      _set(CameraStatus.failed,
+          issue: CameraIssue.startFailed, detail: '$error');
     }
   }
 
@@ -147,7 +149,7 @@ class CameraService extends ChangeNotifier {
     if (!canSwitchCamera || isBusy) return;
 
     _cameraIndex = (_cameraIndex + 1) % _cameras.length;
-    _set(CameraStatus.initialising, 'Switching camera...');
+    _set(CameraStatus.initialising);
     await _open(_cameras[_cameraIndex]);
   }
 
@@ -162,11 +164,11 @@ class CameraService extends ChangeNotifier {
       _notify();
     } on Object {
       _torchOn = false;
-      _set(CameraStatus.ready, 'This camera has no controllable flash.');
+      _set(CameraStatus.ready, issue: CameraIssue.noFlash);
     }
   }
 
-  /// Captures a frame, or returns null with [message] set when it could not.
+  /// Captures a frame, or returns null with [issue] set when it could not.
   Future<String?> captureImage() async {
     if (!isReady || _controller!.value.isTakingPicture) return null;
 
@@ -174,7 +176,8 @@ class CameraService extends ChangeNotifier {
       final file = await _controller!.takePicture();
       return file.path;
     } on Object catch (error) {
-      _set(CameraStatus.ready, 'The capture failed: $error');
+      _set(CameraStatus.ready,
+          issue: CameraIssue.captureFailed, detail: '$error');
       return null;
     }
   }
@@ -197,16 +200,21 @@ class CameraService extends ChangeNotifier {
         state == AppLifecycleState.paused) {
       await controller.dispose();
       _controller = null;
-      _set(CameraStatus.idle, '');
+      _set(CameraStatus.idle);
     }
   }
 
   /// Opens the system settings page for the app.
   Future<void> openSettings() => openAppSettings();
 
-  void _set(CameraStatus status, String message) {
+  void _set(
+    CameraStatus status, {
+    CameraIssue issue = CameraIssue.none,
+    String? detail,
+  }) {
     _status = status;
-    _message = message;
+    _issue = issue;
+    _issueDetail = detail;
     _notify();
   }
 

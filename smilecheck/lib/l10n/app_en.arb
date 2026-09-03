@@ -1,0 +1,116 @@
+{
+  "@@locale": "en",
+
+  "languageName": "English",
+  "languageTitle": "Language",
+  "languageTooltip": "Language",
+
+  "tagline": "A private smile check before you walk out",
+  "privacyOnDevice": "Runs entirely on this device",
+  "privacyNoUploads": "No uploads. Nothing is stored.",
+  "privacyNeverLeft": "This photo never left your device",
+  "onDeviceOnly": "On-device only",
+
+  "hintFrameUp": "Line your smile up inside the frame",
+  "hintHoldStill": "Hold still...",
+  "hintCameraPending": "Getting the camera ready",
+  "hintCameraUnavailable": "Camera unavailable",
+  "preparingCamera": "Preparing camera...",
+  "startCheck": "Start smile check",
+  "flashTooltip": "Flash",
+  "switchCameraTooltip": "Switch camera",
+
+  "cameraAccessNeeded": "Camera access needed",
+  "cameraUnavailable": "Camera unavailable",
+  "openSettings": "Open settings",
+  "allowCamera": "Allow camera",
+  "tryAgain": "Try again",
+
+  "cameraBlocked": "Camera access is blocked for SmileCheck. Enable it in system settings to run a check.",
+  "cameraDenied": "SmileCheck needs the camera to look at your smile. Nothing leaves your device.",
+  "cameraNoneFound": "No camera was found on this device.",
+  "cameraListFailed": "The camera list could not be read: {detail}",
+  "@cameraListFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "cameraStartFailed": "The camera could not be started: {detail}",
+  "@cameraStartFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "cameraCaptureFailed": "The capture failed: {detail}",
+  "@cameraCaptureFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "cameraNoFlash": "This camera has no controllable flash.",
+
+  "processingTitle": "Processing your smile",
+  "processingStepRead": "Reading the captured frame",
+  "processingStepMeasure": "Measuring exposure and focus",
+  "processingStepCheck": "Checking your smile",
+
+  "badgeModelVerdict": "On-device model verdict",
+  "badgeDemoMode": "Demo mode - no trained model",
+  "badgeAnalysisError": "Analysis error",
+
+  "captionCleanliness": "CLEANLINESS",
+  "captionCaptureQuality": "CAPTURE QUALITY",
+  "captionNoReading": "NO READING",
+
+  "headlineLooksClean": "Looks clean",
+  "headlineCheckNeeded": "Check needed",
+  "headlineNoVerdict": "No verdict yet",
+  "headlineFailed": "Analysis failed",
+
+  "labelNoParticles": "No food particles detected",
+  "labelParticlesFound": "Food particles detected",
+  "labelCaptureOnly": "Capture quality only",
+  "labelNothingMeasured": "Nothing was measured",
+
+  "notesClean": "The on-device model found no residue around your smile.",
+  "notesNeedsCheck": "The on-device model flagged possible residue. Worth a quick rinse.",
+
+  "reasonNoFrame": "No frame was captured, so there was nothing to analyse. Check camera access and try again.",
+  "reasonModelMissing": "No model is bundled. Add a binary clean/dirty model to enable real verdicts.",
+  "reasonModelWrongOutputs": "The bundled model returns {classes} classes, so it is a general-purpose classifier rather than a smile-cleanliness one. SmileCheck needs exactly 2 outputs, [clean, dirty], so only capture quality is reported.",
+  "@reasonModelWrongOutputs": {
+    "placeholders": { "classes": { "type": "int" } }
+  },
+  "reasonModelWrongRank": "The bundled model expects a rank-{rank} input. SmileCheck needs [1, height, width, channels].",
+  "@reasonModelWrongRank": {
+    "placeholders": { "rank": { "type": "int" } }
+  },
+  "reasonModelWrongChannels": "The bundled model expects {channels} input channels. SmileCheck supports 1 or 3.",
+  "@reasonModelWrongChannels": {
+    "placeholders": { "channels": { "type": "int" } }
+  },
+  "reasonModelWrongInputType": "The bundled model takes {type} input. SmileCheck supplies float32 or uint8.",
+  "@reasonModelWrongInputType": {
+    "placeholders": { "type": { "type": "String" } }
+  },
+  "reasonModelOpenFailed": "The bundled model could not be opened: {detail}",
+  "@reasonModelOpenFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "reasonModelRunFailed": "The local model failed during inference and was unloaded: {detail}",
+  "@reasonModelRunFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "reasonDecodeFailed": "The captured frame could not be read: {detail}",
+  "@reasonDecodeFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "reasonTimedOut": "The frame could not be processed in time. Try again in better light.",
+
+  "hintTooDark": "The frame is dark. Move towards more light.",
+  "hintTooBright": "The frame is over-exposed. Step out of direct light.",
+  "hintTooSoft": "The frame looks soft. Hold steady and retake.",
+  "hintTooFlat": "The frame is flat. Get a little closer to your smile.",
+
+  "measurementsTitle": "Frame measurements",
+  "measurementsSubtitle": "Taken locally from this capture",
+  "metricBrightness": "Brightness",
+  "metricContrast": "Contrast",
+  "metricSharpness": "Sharpness",
+
+  "checkAgain": "Check again"
+}

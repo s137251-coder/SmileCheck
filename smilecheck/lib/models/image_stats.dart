@@ -1,3 +1,9 @@
+/// The single most useful thing to tell the user about their capture.
+///
+/// A code rather than a sentence: the wording belongs to the UI, which knows
+/// the active language.
+enum CaptureHint { tooDark, tooBright, tooSoft, tooFlat }
+
 /// Objective measurements taken from the captured frame.
 ///
 /// These describe the *photo*, not the teeth. They are what a local pass over
@@ -43,16 +49,12 @@ class ImageStats {
   }
 
   /// The single biggest thing wrong with the capture, or null when it is fine.
-  String? get primaryHint {
+  CaptureHint? get primaryHint {
     if (isEmpty) return null;
-    if (brightness < 0.28) return 'The frame is dark. Move towards more light.';
-    if (brightness > 0.82) {
-      return 'The frame is over-exposed. Step out of direct light.';
-    }
-    if (sharpness < 0.05) return 'The frame looks soft. Hold steady and retake.';
-    if (contrast < 0.10) {
-      return 'The frame is flat. Get a little closer to your smile.';
-    }
+    if (brightness < 0.28) return CaptureHint.tooDark;
+    if (brightness > 0.82) return CaptureHint.tooBright;
+    if (sharpness < 0.05) return CaptureHint.tooSoft;
+    if (contrast < 0.10) return CaptureHint.tooFlat;
     return null;
   }
 

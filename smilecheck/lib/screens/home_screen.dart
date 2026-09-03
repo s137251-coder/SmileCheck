@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_theme.dart';
+import '../core/l10n_text.dart';
+import '../l10n/app_localizations.dart';
 import '../services/camera_service.dart';
+import '../widgets/language_button.dart';
 import '../widgets/smile_guide.dart';
 import '../widgets/ui_bits.dart';
 import 'processing_screen.dart';
@@ -64,6 +67,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final camera = context.watch<CameraService>();
+    final l = L.of(context);
 
     return Scaffold(
       body: Stack(
@@ -85,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 _Shutter(
                   enabled: camera.isReady && !_capturing,
                   busy: _capturing,
-                  hint: _hintFor(camera),
+                  hint: _hintFor(camera, l),
                   onPressed: _capture,
                 ),
               ],
@@ -96,15 +100,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  String _hintFor(CameraService camera) {
-    if (_capturing) return 'Hold still...';
-    if (camera.isReady) return 'Line your smile up inside the frame';
+  String _hintFor(CameraService camera, L l) {
+    if (_capturing) return l.hintHoldStill;
+    if (camera.isReady) return l.hintFrameUp;
     // Idle counts as pending, matching the spinner the fallback shows, so the
     // hint can never contradict the state above it.
     if (camera.isBusy || camera.status == CameraStatus.idle) {
-      return 'Getting the camera ready';
+      return l.hintCameraPending;
     }
-    return 'Camera unavailable';
+    return l.hintCameraUnavailable;
   }
 }
 
@@ -146,20 +150,22 @@ class _CameraFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L.of(context);
+
     if (camera.isBusy || camera.status == CameraStatus.idle) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 34,
               height: 34,
               child: CircularProgressIndicator(strokeWidth: 3),
             ),
-            SizedBox(height: 18),
+            const SizedBox(height: 18),
             Text(
-              'Preparing camera...',
-              style: TextStyle(color: AppColors.textSecondary),
+              l.preparingCamera,
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ),
@@ -168,9 +174,7 @@ class _CameraFallback extends StatelessWidget {
 
     final blocked = camera.status == CameraStatus.permissionBlocked;
     final denied = camera.status == CameraStatus.permissionDenied;
-    final icon = blocked || denied
-        ? Icons.no_photography_outlined
-        : Icons.videocam_off_outlined;
+    final needsAccess = blocked || denied;
 
     return Center(
       child: Padding(
@@ -187,19 +191,23 @@ class _CameraFallback extends StatelessWidget {
                   color: AppColors.caution.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: AppColors.caution, size: 28),
+                child: Icon(
+                  needsAccess
+                      ? Icons.no_photography_outlined
+                      : Icons.videocam_off_outlined,
+                  color: AppColors.caution,
+                  size: 28,
+                ),
               ),
               const SizedBox(height: 20),
               Text(
-                blocked || denied
-                    ? 'Camera access needed'
-                    : 'Camera unavailable',
+                needsAccess ? l.cameraAccessNeeded : l.cameraUnavailable,
                 style: Theme.of(context).textTheme.titleLarge,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 10),
               Text(
-                camera.message,
+                l.cameraMessage(camera) ?? l.cameraUnavailable,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
@@ -208,13 +216,13 @@ class _CameraFallback extends StatelessWidget {
                 FilledButton.icon(
                   onPressed: camera.openSettings,
                   icon: const Icon(Icons.settings_outlined, size: 20),
-                  label: const Text('Open settings'),
+                  label: Text(l.openSettings),
                 )
               else
                 FilledButton.icon(
                   onPressed: camera.initialize,
                   icon: const Icon(Icons.camera_alt_outlined, size: 20),
-                  label: Text(denied ? 'Allow camera' : 'Try again'),
+                  label: Text(denied ? l.allowCamera : l.tryAgain),
                 ),
             ],
           ),
@@ -231,18 +239,21 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L.of(context);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
       child: Row(
         children: [
           const BrandMark(size: 38),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
+                const Text(
                   'SmileCheck',
+                  textDirection: TextDirection.ltr,
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -250,29 +261,35 @@ class _TopBar extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'On-device only',
-                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  l.onDeviceOnly,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
           ),
-          if (camera.supportsTorch)
+          const LanguageButton(),
+          if (camera.supportsTorch) ...[
+            const SizedBox(width: 10),
             CircleIconButton(
               icon: camera.isTorchOn
                   ? Icons.flash_on_rounded
                   : Icons.flash_off_rounded,
-              tooltip: 'Flash',
+              tooltip: l.flashTooltip,
               active: camera.isTorchOn,
               onPressed: camera.toggleTorch,
             ),
-          if (camera.supportsTorch && camera.canSwitchCamera)
+          ],
+          if (camera.canSwitchCamera) ...[
             const SizedBox(width: 10),
-          if (camera.canSwitchCamera)
             CircleIconButton(
               icon: Icons.cameraswitch_rounded,
-              tooltip: 'Switch camera',
+              tooltip: l.switchCameraTooltip,
               onPressed: camera.isBusy ? null : camera.switchCamera,
             ),
+          ],
         ],
       ),
     );
@@ -296,6 +313,8 @@ class _Shutter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L.of(context);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 26, 20, 26),
@@ -324,7 +343,7 @@ class _Shutter extends StatelessWidget {
           const SizedBox(height: 20),
           Semantics(
             button: true,
-            label: 'Start smile check',
+            label: l.startCheck,
             child: GestureDetector(
               onTap: enabled ? onPressed : null,
               child: AnimatedScale(
@@ -371,9 +390,9 @@ class _Shutter extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 18),
-          const InfoPill(
+          InfoPill(
             icon: Icons.shield_outlined,
-            label: 'No uploads. Nothing is stored.',
+            label: l.privacyNoUploads,
             color: AppColors.textSecondary,
           ),
         ],

@@ -1,0 +1,116 @@
+{
+  "@@locale": "he",
+
+  "languageName": "עברית",
+  "languageTitle": "שפה",
+  "languageTooltip": "שפה",
+
+  "tagline": "בדיקת חיוך פרטית לפני שיוצאים",
+  "privacyOnDevice": "הכול רץ על המכשיר הזה",
+  "privacyNoUploads": "אין העלאות. שום דבר לא נשמר.",
+  "privacyNeverLeft": "התמונה הזו לא יצאה מהמכשיר",
+  "onDeviceOnly": "עיבוד מקומי בלבד",
+
+  "hintFrameUp": "יישרו את החיוך בתוך המסגרת",
+  "hintHoldStill": "החזיקו יציב...",
+  "hintCameraPending": "מכינים את המצלמה",
+  "hintCameraUnavailable": "המצלמה לא זמינה",
+  "preparingCamera": "מכינים את המצלמה...",
+  "startCheck": "התחלת בדיקת חיוך",
+  "flashTooltip": "פלאש",
+  "switchCameraTooltip": "החלפת מצלמה",
+
+  "cameraAccessNeeded": "נדרשת גישה למצלמה",
+  "cameraUnavailable": "המצלמה לא זמינה",
+  "openSettings": "פתיחת הגדרות",
+  "allowCamera": "אישור גישה למצלמה",
+  "tryAgain": "לנסות שוב",
+
+  "cameraBlocked": "הגישה למצלמה חסומה עבור SmileCheck. יש להפעיל אותה בהגדרות המערכת כדי להריץ בדיקה.",
+  "cameraDenied": "SmileCheck צריכה את המצלמה כדי להסתכל על החיוך. שום דבר לא יוצא מהמכשיר.",
+  "cameraNoneFound": "לא נמצאה מצלמה במכשיר הזה.",
+  "cameraListFailed": "לא ניתן לקרוא את רשימת המצלמות: {detail}",
+  "@cameraListFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "cameraStartFailed": "לא ניתן להפעיל את המצלמה: {detail}",
+  "@cameraStartFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "cameraCaptureFailed": "הצילום נכשל: {detail}",
+  "@cameraCaptureFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "cameraNoFlash": "למצלמה הזו אין פלאש הניתן לשליטה.",
+
+  "processingTitle": "מעבדים את החיוך",
+  "processingStepRead": "קוראים את התמונה שצולמה",
+  "processingStepMeasure": "מודדים חשיפה ומיקוד",
+  "processingStepCheck": "בודקים את החיוך",
+
+  "badgeModelVerdict": "פסק דין ממודל מקומי",
+  "badgeDemoMode": "מצב הדגמה - אין מודל מאומן",
+  "badgeAnalysisError": "שגיאת ניתוח",
+
+  "captionCleanliness": "ניקיון",
+  "captionCaptureQuality": "איכות צילום",
+  "captionNoReading": "אין מדידה",
+
+  "headlineLooksClean": "נראה נקי",
+  "headlineCheckNeeded": "כדאי לבדוק",
+  "headlineNoVerdict": "אין עדיין פסק דין",
+  "headlineFailed": "הניתוח נכשל",
+
+  "labelNoParticles": "לא זוהו שאריות מזון",
+  "labelParticlesFound": "זוהו שאריות מזון",
+  "labelCaptureOnly": "איכות צילום בלבד",
+  "labelNothingMeasured": "לא נמדד דבר",
+
+  "notesClean": "המודל המקומי לא מצא שאריות סביב החיוך.",
+  "notesNeedsCheck": "המודל המקומי סימן שאריות אפשריות. שווה שטיפה מהירה.",
+
+  "reasonNoFrame": "לא צולמה תמונה, ולכן לא היה מה לנתח. בדקו את הגישה למצלמה ונסו שוב.",
+  "reasonModelMissing": "לא מצורף מודל. הוסיפו מודל בינארי נקי/מלוכלך כדי לקבל פסק דין אמיתי.",
+  "reasonModelWrongOutputs": "המודל המצורף מחזיר {classes} מחלקות, ולכן הוא מסווג כללי ולא מסווג ניקיון חיוך. SmileCheck צריכה בדיוק 2 מוצאים, [נקי, מלוכלך], ולכן מדווחת רק איכות הצילום.",
+  "@reasonModelWrongOutputs": {
+    "placeholders": { "classes": { "type": "int" } }
+  },
+  "reasonModelWrongRank": "המודל המצורף מצפה לקלט בדרגה {rank}. SmileCheck צריכה [1, גובה, רוחב, ערוצים].",
+  "@reasonModelWrongRank": {
+    "placeholders": { "rank": { "type": "int" } }
+  },
+  "reasonModelWrongChannels": "המודל המצורף מצפה ל-{channels} ערוצי קלט. SmileCheck תומכת ב-1 או 3.",
+  "@reasonModelWrongChannels": {
+    "placeholders": { "channels": { "type": "int" } }
+  },
+  "reasonModelWrongInputType": "המודל המצורף מקבל קלט מסוג {type}. SmileCheck מספקת float32 או uint8.",
+  "@reasonModelWrongInputType": {
+    "placeholders": { "type": { "type": "String" } }
+  },
+  "reasonModelOpenFailed": "לא ניתן לפתוח את המודל המצורף: {detail}",
+  "@reasonModelOpenFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "reasonModelRunFailed": "המודל המקומי נכשל במהלך ההרצה והוסר מהזיכרון: {detail}",
+  "@reasonModelRunFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "reasonDecodeFailed": "לא ניתן לקרוא את התמונה שצולמה: {detail}",
+  "@reasonDecodeFailed": {
+    "placeholders": { "detail": { "type": "String" } }
+  },
+  "reasonTimedOut": "לא הספקנו לעבד את התמונה בזמן. נסו שוב בתאורה טובה יותר.",
+
+  "hintTooDark": "התמונה כהה. התקרבו לאור.",
+  "hintTooBright": "התמונה שרופה. צאו מאור ישיר.",
+  "hintTooSoft": "התמונה מטושטשת. החזיקו יציב וצלמו שוב.",
+  "hintTooFlat": "התמונה שטוחה. התקרבו קצת לחיוך.",
+
+  "measurementsTitle": "מדידות התמונה",
+  "measurementsSubtitle": "נמדדו מקומית מהצילום הזה",
+  "metricBrightness": "בהירות",
+  "metricContrast": "ניגודיות",
+  "metricSharpness": "חדות",
+
+  "checkAgain": "בדיקה נוספת"
+}

@@ -15,6 +15,25 @@ enum AnalysisMode {
 
 enum Verdict { clean, needsCheck, inconclusive, failed }
 
+/// Why the result turned out the way it did.
+///
+/// The domain layer emits a code and, where useful, one parameter. Turning that
+/// into a sentence is the UI's job, because only the UI knows the language.
+enum ResultReason {
+  modelClean,
+  modelNeedsCheck,
+  noFrame,
+  modelMissing,
+  modelWrongRank,
+  modelWrongChannels,
+  modelWrongInputType,
+  modelWrongOutputs,
+  modelOpenFailed,
+  modelRunFailed,
+  decodeFailed,
+  timedOut,
+}
+
 /// Single source of truth for the decision boundary, shared by the service that
 /// produces a verdict and the screen that renders it.
 class AnalysisThresholds {
@@ -29,9 +48,9 @@ class AnalysisResult {
     required this.score,
     required this.verdict,
     required this.mode,
-    required this.headline,
-    required this.label,
-    required this.notes,
+    required this.reason,
+    this.reasonValue,
+    this.reasonDetail,
     this.stats = ImageStats.zero,
     this.imagePath,
   });
@@ -41,15 +60,14 @@ class AnalysisResult {
   final double score;
   final Verdict verdict;
   final AnalysisMode mode;
+  final ResultReason reason;
 
-  /// Large verdict text, e.g. "Looks clean".
-  final String headline;
+  /// Numeric parameter for [reason], e.g. the model's output class count.
+  final int? reasonValue;
 
-  /// Supporting classification line.
-  final String label;
-
-  /// Plain-language explanation of what actually happened.
-  final String notes;
+  /// Technical detail for [reason], such as an exception message or a tensor
+  /// type name. Deliberately not translated.
+  final String? reasonDetail;
 
   final ImageStats stats;
   final String? imagePath;
@@ -68,11 +86,7 @@ class AnalysisResult {
       score: score,
       verdict: clean ? Verdict.clean : Verdict.needsCheck,
       mode: AnalysisMode.model,
-      headline: clean ? 'Looks clean' : 'Check needed',
-      label: clean ? 'No food particles detected' : 'Food particles detected',
-      notes: clean
-          ? 'The on-device model found no residue around your smile.'
-          : 'The on-device model flagged possible residue. Worth a quick rinse.',
+      reason: clean ? ResultReason.modelClean : ResultReason.modelNeedsCheck,
       stats: stats,
       imagePath: imagePath,
     );
@@ -82,29 +96,30 @@ class AnalysisResult {
   /// classified the teeth, so no clean/dirty claim is made.
   factory AnalysisResult.demo({
     required ImageStats stats,
-    required String reason,
+    required ResultReason reason,
+    int? reasonValue,
+    String? reasonDetail,
     String? imagePath,
   }) {
     return AnalysisResult(
       score: stats.captureQuality,
       verdict: Verdict.inconclusive,
       mode: AnalysisMode.demo,
-      headline: 'No verdict yet',
-      label: 'Capture quality only',
-      notes: reason,
+      reason: reason,
+      reasonValue: reasonValue,
+      reasonDetail: reasonDetail,
       stats: stats,
       imagePath: imagePath,
     );
   }
 
-  factory AnalysisResult.failure(String notes) {
+  factory AnalysisResult.failure(ResultReason reason, {String? detail}) {
     return AnalysisResult(
       score: 0,
       verdict: Verdict.failed,
       mode: AnalysisMode.error,
-      headline: 'Analysis failed',
-      label: 'Nothing was measured',
-      notes: notes,
+      reason: reason,
+      reasonDetail: detail,
     );
   }
 
@@ -112,9 +127,9 @@ class AnalysisResult {
         'score': score,
         'verdict': verdict.name,
         'mode': mode.name,
-        'headline': headline,
-        'label': label,
-        'notes': notes,
+        'reason': reason.name,
+        if (reasonValue != null) 'reasonValue': reasonValue,
+        if (reasonDetail != null) 'reasonDetail': reasonDetail,
         'stats': stats.toJson(),
       };
 }

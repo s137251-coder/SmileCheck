@@ -3,58 +3,41 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../core/l10n_text.dart';
+import '../l10n/app_localizations.dart';
 import '../models/analysis_result.dart';
 import '../widgets/score_ring.dart';
 import '../widgets/ui_bits.dart';
 
-/// Presentation rules for one verdict, kept together so colour, glyph and
-/// wording can never drift apart between the ring, the halo and the badge.
+/// Presentation rules for one verdict, kept together so colour and glyph can
+/// never drift apart between the ring, the halo and the badge.
 class _VerdictStyle {
-  const _VerdictStyle({
-    required this.color,
-    required this.icon,
-    required this.caption,
-    required this.badge,
-  });
+  const _VerdictStyle({required this.color, required this.icon});
 
   final Color color;
   final IconData icon;
 
-  /// Sits under the number in the ring.
-  final String caption;
-
-  /// Mode pill at the top of the screen.
-  final String badge;
-
-  factory _VerdictStyle.of(AnalysisResult result) {
-    switch (result.verdict) {
+  factory _VerdictStyle.of(Verdict verdict) {
+    switch (verdict) {
       case Verdict.clean:
         return const _VerdictStyle(
           color: AppColors.accent,
           icon: Icons.check_rounded,
-          caption: 'CLEANLINESS',
-          badge: 'On-device model verdict',
         );
       case Verdict.needsCheck:
         return const _VerdictStyle(
           color: AppColors.danger,
           icon: Icons.warning_amber_rounded,
-          caption: 'CLEANLINESS',
-          badge: 'On-device model verdict',
         );
       case Verdict.inconclusive:
         return const _VerdictStyle(
           color: AppColors.caution,
           icon: Icons.science_outlined,
-          caption: 'CAPTURE QUALITY',
-          badge: 'Demo mode - no trained model',
         );
       case Verdict.failed:
         return const _VerdictStyle(
           color: AppColors.textMuted,
           icon: Icons.error_outline_rounded,
-          caption: 'NO READING',
-          badge: 'Analysis error',
         );
     }
   }
@@ -65,9 +48,33 @@ class ResultScreen extends StatelessWidget {
 
   final AnalysisResult result;
 
+  String _badge(L l) {
+    switch (result.mode) {
+      case AnalysisMode.model:
+        return l.badgeModelVerdict;
+      case AnalysisMode.demo:
+        return l.badgeDemoMode;
+      case AnalysisMode.error:
+        return l.badgeAnalysisError;
+    }
+  }
+
+  String _caption(L l) {
+    switch (result.verdict) {
+      case Verdict.clean:
+      case Verdict.needsCheck:
+        return l.captionCleanliness;
+      case Verdict.inconclusive:
+        return l.captionCaptureQuality;
+      case Verdict.failed:
+        return l.captionNoReading;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final style = _VerdictStyle.of(result);
+    final style = _VerdictStyle.of(result.verdict);
+    final l = L.of(context);
 
     return Scaffold(
       body: Stack(
@@ -114,14 +121,14 @@ class ResultScreen extends StatelessWidget {
                           icon: result.isModelBacked
                               ? Icons.memory_rounded
                               : Icons.info_outline_rounded,
-                          label: style.badge,
+                          label: _badge(l),
                           color: style.color,
                         ),
                         const SizedBox(height: 26),
                         ScoreRing(
                           score: result.score,
                           color: style.color,
-                          caption: style.caption,
+                          caption: _caption(l),
                         ),
                         const SizedBox(height: 26),
                         Row(
@@ -131,7 +138,7 @@ class ResultScreen extends StatelessWidget {
                             const SizedBox(width: 10),
                             Flexible(
                               child: Text(
-                                result.headline,
+                                l.headlineFor(result.verdict),
                                 style: Theme.of(context)
                                     .textTheme
                                     .displaySmall
@@ -142,7 +149,7 @@ class ResultScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          result.label,
+                          l.labelFor(result.verdict),
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
@@ -153,9 +160,9 @@ class ResultScreen extends StatelessWidget {
                           _MeasurementsPanel(result: result),
                         ],
                         const SizedBox(height: 14),
-                        const InfoPill(
+                        InfoPill(
                           icon: Icons.lock_outline_rounded,
-                          label: 'This photo never left your device',
+                          label: l.privacyNeverLeft,
                           color: AppColors.textMuted,
                         ),
                       ],
@@ -173,7 +180,7 @@ class ResultScreen extends StatelessWidget {
                     onPressed: () => Navigator.of(context)
                         .popUntil((route) => route.isFirst),
                     icon: const Icon(Icons.refresh_rounded, size: 21),
-                    label: const Text('Check again'),
+                    label: Text(l.checkAgain),
                   ),
                 ),
               ],
@@ -194,6 +201,7 @@ class _NotesPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L.of(context);
     final hint = result.stats.primaryHint;
 
     return GlassPanel(
@@ -208,7 +216,7 @@ class _NotesPanel extends StatelessWidget {
               const SizedBox(width: 11),
               Expanded(
                 child: Text(
-                  result.notes,
+                  l.reasonText(result),
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ),
@@ -227,7 +235,7 @@ class _NotesPanel extends StatelessWidget {
                 const SizedBox(width: 11),
                 Expanded(
                   child: Text(
-                    hint,
+                    l.captureHintText(hint),
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ),
@@ -248,6 +256,7 @@ class _MeasurementsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = L.of(context);
     final stats = result.stats;
     final path = result.imagePath;
 
@@ -275,14 +284,14 @@ class _MeasurementsPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Frame measurements',
+                      l.measurementsTitle,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontSize: 16,
                           ),
                     ),
-                    const Text(
-                      'Taken locally from this capture',
-                      style: TextStyle(
+                    Text(
+                      l.measurementsSubtitle,
+                      style: const TextStyle(
                         fontSize: 12.5,
                         color: AppColors.textMuted,
                       ),
@@ -294,21 +303,21 @@ class _MeasurementsPanel extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           MetricBar(
-            label: 'Brightness',
+            label: l.metricBrightness,
             value: stats.brightness,
             display: '${(stats.brightness * 100).toStringAsFixed(0)}%',
             color: AppColors.info,
           ),
           const SizedBox(height: 16),
           MetricBar(
-            label: 'Contrast',
+            label: l.metricContrast,
             value: (stats.contrast / 0.3).clamp(0.0, 1.0),
             display: stats.contrast.toStringAsFixed(3),
             color: AppColors.accent,
           ),
           const SizedBox(height: 16),
           MetricBar(
-            label: 'Sharpness',
+            label: l.metricSharpness,
             value: (stats.sharpness / 0.15).clamp(0.0, 1.0),
             display: stats.sharpness.toStringAsFixed(3),
             color: AppColors.caution,

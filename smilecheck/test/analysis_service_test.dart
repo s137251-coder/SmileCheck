@@ -18,6 +18,7 @@ void main() {
 
       expect(result.mode, AnalysisMode.demo);
       expect(result.verdict, Verdict.inconclusive);
+      expect(result.reason, ResultReason.noFrame);
       expect(result.isModelBacked, isFalse);
     });
 
@@ -28,8 +29,8 @@ void main() {
       final result = await service.analyzeImage(imagePath: 'missing-file.jpg');
 
       expect(result.isModelBacked, isFalse);
-      expect(result.headline, isNot('Looks clean'));
-      expect(result.headline, isNot('Check needed'));
+      expect(result.verdict, isNot(Verdict.clean));
+      expect(result.verdict, isNot(Verdict.needsCheck));
     });
 
     test('never promotes the bundled asset to a usable model', () async {
@@ -54,7 +55,8 @@ void main() {
 
       expect(report.status, ModelStatus.incompatible);
       expect(report.isReady, isFalse);
-      expect(report.detail, contains('1001'));
+      expect(report.reason, ResultReason.modelWrongOutputs);
+      expect(report.reasonValue, 1001);
     });
 
     test('accepts the documented binary contract', () {
@@ -73,36 +75,36 @@ void main() {
       expect(float.isReady, isTrue);
     });
 
-    test('rejects unsupported ranks, channels and input types', () {
+    test('reports which part of the signature is wrong', () {
       expect(
         ModelContract.validate(
           inputShape: const [1, 224, 224],
           inputType: TensorType.uint8,
           outputShape: const [1, 2],
-        ).isReady,
-        isFalse,
+        ).reason,
+        ResultReason.modelWrongRank,
       );
       expect(
         ModelContract.validate(
           inputShape: const [1, 224, 224, 4],
           inputType: TensorType.uint8,
           outputShape: const [1, 2],
-        ).isReady,
-        isFalse,
+        ).reason,
+        ResultReason.modelWrongChannels,
       );
       expect(
         ModelContract.validate(
           inputShape: const [1, 224, 224, 3],
           inputType: TensorType.int8,
           outputShape: const [1, 2],
-        ).isReady,
-        isFalse,
+        ).reason,
+        ResultReason.modelWrongInputType,
       );
     });
   });
 
   group('AnalysisResult', () {
-    test('uses one threshold for the verdict and its wording', () {
+    test('uses one threshold for the verdict and its reason', () {
       const stats = ImageStats(brightness: 0.5, contrast: 0.2, sharpness: 0.1);
 
       final justClean = AnalysisResult.fromModel(
@@ -115,12 +117,22 @@ void main() {
       );
 
       expect(justClean.verdict, Verdict.clean);
-      expect(justClean.headline, 'Looks clean');
-      expect(justClean.label, 'No food particles detected');
+      expect(justClean.reason, ResultReason.modelClean);
 
       expect(justBelow.verdict, Verdict.needsCheck);
-      expect(justBelow.headline, 'Check needed');
-      expect(justBelow.label, 'Food particles detected');
+      expect(justBelow.reason, ResultReason.modelNeedsCheck);
+    });
+
+    test('carries no user-facing prose, only codes', () {
+      final result = AnalysisResult.demo(
+        stats: ImageStats.zero,
+        reason: ResultReason.modelWrongOutputs,
+        reasonValue: 1001,
+      );
+
+      // The domain layer must stay language-agnostic; the UI renders the text.
+      expect(result.toJson()['reason'], 'modelWrongOutputs');
+      expect(result.reasonValue, 1001);
     });
   });
 
@@ -136,14 +148,15 @@ void main() {
       const dark = ImageStats(brightness: 0.06, contrast: 0.03, sharpness: 0.01);
 
       expect(dark.captureQuality, lessThan(25));
-      expect(dark.primaryHint, contains('dark'));
+      expect(dark.primaryHint, CaptureHint.tooDark);
     });
 
     test('penalises a blown-out frame as well as a dark one', () {
-      const blown = ImageStats(brightness: 0.97, contrast: 0.05, sharpness: 0.02);
+      const blown =
+          ImageStats(brightness: 0.97, contrast: 0.05, sharpness: 0.02);
 
       expect(blown.captureQuality, lessThan(45));
-      expect(blown.primaryHint, contains('over-exposed'));
+      expect(blown.primaryHint, CaptureHint.tooBright);
     });
 
     test('stays within 0..100 for every input', () {

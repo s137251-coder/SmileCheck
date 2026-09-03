@@ -24,18 +24,26 @@ enum ModelStatus {
 }
 
 /// What the interpreter reported about the bundled model.
+///
+/// [reason] and its parameter travel to the UI untranslated, exactly like every
+/// other domain-level explanation in the app.
 class ModelReport {
   const ModelReport({
     required this.status,
-    required this.detail,
+    required this.reason,
+    this.reasonValue,
+    this.reasonDetail,
     this.inputShape,
     this.outputShape,
   });
 
   final ModelStatus status;
 
-  /// Human-readable explanation, shown verbatim in the UI.
-  final String detail;
+  /// Why the model is unusable. Meaningless when [isReady].
+  final ResultReason reason;
+  final int? reasonValue;
+  final String? reasonDetail;
+
   final List<int>? inputShape;
   final List<int>? outputShape;
 
@@ -61,49 +69,37 @@ class ModelContract {
     required TensorType inputType,
     required List<int> outputShape,
   }) {
-    ModelReport reject(String detail) => ModelReport(
+    ModelReport reject(ResultReason reason, {int? value, String? detail}) =>
+        ModelReport(
           status: ModelStatus.incompatible,
-          detail: detail,
+          reason: reason,
+          reasonValue: value,
+          reasonDetail: detail,
           inputShape: inputShape,
           outputShape: outputShape,
         );
 
     if (inputShape.length != 4) {
-      return reject(
-        'The bundled model expects a rank-${inputShape.length} input. '
-        'SmileCheck needs [1, height, width, channels].',
-      );
+      return reject(ResultReason.modelWrongRank, value: inputShape.length);
     }
 
     final channels = inputShape[3];
     if (channels != 1 && channels != 3) {
-      return reject(
-        'The bundled model expects $channels input channels. '
-        'SmileCheck supports 1 or 3.',
-      );
+      return reject(ResultReason.modelWrongChannels, value: channels);
     }
 
     if (inputType != TensorType.float32 && inputType != TensorType.uint8) {
-      return reject(
-        'The bundled model takes ${inputType.name} input. SmileCheck supplies '
-        'float32 or uint8.',
-      );
+      return reject(ResultReason.modelWrongInputType, detail: inputType.name);
     }
 
     final classes = outputShape.isEmpty ? 0 : outputShape.last;
     if (classes != outputClasses) {
-      return reject(
-        'The bundled model returns $classes classes, so it is a '
-        'general-purpose classifier rather than a smile-cleanliness one. '
-        'SmileCheck needs exactly $outputClasses outputs, [clean, dirty], so '
-        'only capture quality is reported.',
-      );
+      return reject(ResultReason.modelWrongOutputs, value: classes);
     }
 
     return ModelReport(
       status: ModelStatus.ready,
-      detail: 'Local model ready: ${inputShape.join(' x ')} '
-          '${inputType.name} in, $classes classes out.',
+      reason: ResultReason.modelClean,
       inputShape: inputShape,
       outputShape: outputShape,
     );
@@ -126,7 +122,7 @@ class AnalysisService {
   Interpreter? _interpreter;
   ModelReport _report = const ModelReport(
     status: ModelStatus.unknown,
-    detail: 'The local model has not been inspected yet.',
+    reason: ResultReason.modelMissing,
   );
 
   ModelReport get report => _report;
@@ -141,8 +137,7 @@ class AnalysisService {
     if (imagePath == null) {
       return _remember(AnalysisResult.demo(
         stats: ImageStats.zero,
-        reason: 'No frame was captured, so there was nothing to analyse. '
-            'Check camera access and try again.',
+        reason: ResultReason.noFrame,
       ));
     }
 
@@ -156,9 +151,10 @@ class AnalysisService {
         height: hasShape ? shape[1] : 224,
       );
     } on Object catch (error) {
-      return _remember(
-        AnalysisResult.failure('The captured frame could not be read: $error'),
-      );
+      return _remember(AnalysisResult.failure(
+        ResultReason.decodeFailed,
+        detail: '$error',
+      ));
     }
 
     if (isModelUsable) {
@@ -174,7 +170,9 @@ class AnalysisService {
 
     return _remember(AnalysisResult.demo(
       stats: payload.stats,
-      reason: _report.detail,
+      reason: _report.reason,
+      reasonValue: _report.reasonValue,
+      reasonDetail: _report.reasonDetail,
       imagePath: imagePath,
     ));
   }
@@ -196,7 +194,9 @@ class AnalysisService {
           quantised: inputTensor.type == TensorType.uint8,
         )
       ];
-      final output = <List<num>>[List<num>.filled(ModelContract.outputClasses, 0)];
+      final output = <List<num>>[
+        List<num>.filled(ModelContract.outputClasses, 0)
+      ];
 
       interpreter.run(input, output);
 
@@ -207,8 +207,8 @@ class AnalysisService {
       _interpreter = null;
       _report = ModelReport(
         status: ModelStatus.incompatible,
-        detail: 'The local model failed during inference and was unloaded: '
-            '$error',
+        reason: ResultReason.modelRunFailed,
+        reasonDetail: '$error',
         inputShape: _report.inputShape,
         outputShape: _report.outputShape,
       );
@@ -254,8 +254,7 @@ class AnalysisService {
     } on Object {
       _report = const ModelReport(
         status: ModelStatus.missing,
-        detail: 'No model is bundled. Add a binary clean/dirty model at '
-            '$modelAssetPath to enable real verdicts.',
+        reason: ResultReason.modelMissing,
       );
       return;
     }
@@ -273,7 +272,8 @@ class AnalysisService {
       candidate?.close();
       _report = ModelReport(
         status: ModelStatus.incompatible,
-        detail: 'The bundled model could not be opened: $error',
+        reason: ResultReason.modelOpenFailed,
+        reasonDetail: '$error',
       );
     }
   }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../core/app_theme.dart';
+import '../l10n/app_localizations.dart';
 import '../models/analysis_result.dart';
 import '../services/analysis_service.dart';
 import '../widgets/scan_overlay.dart';
@@ -24,11 +25,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
   /// Keeps the scan visible long enough to read even when analysis is instant.
   static const Duration _minimumVisible = Duration(milliseconds: 700);
 
-  static const List<String> _steps = [
-    'Reading the captured frame',
-    'Measuring exposure and focus',
-    'Checking your smile',
-  ];
+  static const int _stepCount = 3;
 
   Timer? _stepTimer;
   int _step = 0;
@@ -40,7 +37,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       const Duration(milliseconds: 480),
       (_) {
         if (!mounted) return;
-        setState(() => _step = (_step + 1) % _steps.length);
+        setState(() => _step = (_step + 1) % _stepCount);
       },
     );
     unawaited(_run());
@@ -65,11 +62,12 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
       ]);
       result = results.first! as AnalysisResult;
     } on TimeoutException {
-      result = AnalysisResult.failure(
-        'The frame could not be processed in time. Try again in better light.',
-      );
+      result = AnalysisResult.failure(ResultReason.timedOut);
     } on Object catch (error) {
-      result = AnalysisResult.failure('The frame could not be analysed: $error');
+      result = AnalysisResult.failure(
+        ResultReason.decodeFailed,
+        detail: '$error',
+      );
     }
 
     if (!mounted) return;
@@ -84,9 +82,21 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
     );
   }
 
+  String _stepLabel(L l) {
+    switch (_step) {
+      case 0:
+        return l.processingStepRead;
+      case 1:
+        return l.processingStepMeasure;
+      default:
+        return l.processingStepCheck;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final path = widget.imagePath;
+    final l = L.of(context);
 
     return Scaffold(
       body: DecoratedBox(
@@ -121,7 +131,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                 ),
                 const SizedBox(height: 34),
                 Text(
-                  'Processing your smile',
+                  l.processingTitle,
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 14),
@@ -138,7 +148,7 @@ class _ProcessingScreenState extends State<ProcessingScreen> {
                       ),
                       const SizedBox(width: 11),
                       Text(
-                        _steps[_step],
+                        _stepLabel(l),
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ],
