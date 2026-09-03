@@ -1,12 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../core/app_theme.dart';
 import '../models/analysis_result.dart';
 import '../services/analysis_service.dart';
+import '../widgets/scan_overlay.dart';
 import 'result_screen.dart';
 
+/// Shows the frozen frame being scanned while the local analysis runs.
 class ProcessingScreen extends StatefulWidget {
   const ProcessingScreen({super.key, this.imagePath});
 
@@ -17,69 +21,130 @@ class ProcessingScreen extends StatefulWidget {
 }
 
 class _ProcessingScreenState extends State<ProcessingScreen> {
+  /// Keeps the scan visible long enough to read even when analysis is instant.
+  static const Duration _minimumVisible = Duration(milliseconds: 700);
+
+  static const List<String> _steps = [
+    'Reading the captured frame',
+    'Measuring exposure and focus',
+    'Checking your smile',
+  ];
+
+  Timer? _stepTimer;
+  int _step = 0;
+
   @override
   void initState() {
     super.initState();
-    _runProcessing();
+    _stepTimer = Timer.periodic(
+      const Duration(milliseconds: 480),
+      (_) {
+        if (!mounted) return;
+        setState(() => _step = (_step + 1) % _steps.length);
+      },
+    );
+    unawaited(_run());
   }
 
-  Future<void> _runProcessing() async {
-    final analysisService = context.read<AnalysisService>();
-    await Future<void>.delayed(const Duration(milliseconds: 900));
-    late final AnalysisResult result;
+  @override
+  void dispose() {
+    _stepTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _run() async {
+    final service = context.read<AnalysisService>();
+    AnalysisResult result;
 
     try {
-      result = await analysisService
-          .analyzeImage(imagePath: widget.imagePath)
-          .timeout(const Duration(seconds: 20));
+      final results = await Future.wait<Object?>([
+        service
+            .analyzeImage(imagePath: widget.imagePath)
+            .timeout(const Duration(seconds: 20)),
+        Future<void>.delayed(_minimumVisible),
+      ]);
+      result = results.first! as AnalysisResult;
     } on TimeoutException {
-      result = const AnalysisResult(
-        score: 0,
-        label: 'Analysis timed out',
-        notes: 'The image could not be processed in time. Please try again.',
+      result = AnalysisResult.failure(
+        'The frame could not be processed in time. Try again in better light.',
       );
     } on Object catch (error) {
-      result = AnalysisResult(
-        score: 0,
-        label: 'Analysis failed',
-        notes: 'The image could not be analyzed: $error',
-      );
+      result = AnalysisResult.failure('The frame could not be analysed: $error');
     }
 
     if (!mounted) return;
 
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(
-        builder: (_) => ResultScreen(result: result),
+      PageRouteBuilder<void>(
+        transitionDuration: const Duration(milliseconds: 350),
+        pageBuilder: (_, _, _) => ResultScreen(result: result),
+        transitionsBuilder: (_, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final path = widget.imagePath;
+
     return Scaffold(
-      body: SafeArea(
-        child: Center(
+      body: DecoratedBox(
+        decoration: const BoxDecoration(gradient: AppColors.backdrop),
+        child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(AppMetrics.gutter),
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(),
-                const SizedBox(height: 20),
-                const Text(
-                  'Processing your smile',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
+                const Spacer(),
+                Expanded(
+                  flex: 8,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        if (path != null)
+                          Image.file(
+                            File(path),
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => const ColoredBox(
+                              color: AppColors.surface,
+                            ),
+                          )
+                        else
+                          const ColoredBox(color: AppColors.surface),
+                        const ScanOverlay(),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 34),
                 Text(
-                  'Checking for food particles and smile cleanliness.',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodyLarge,
+                  'Processing your smile',
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
+                const SizedBox(height: 14),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 280),
+                  child: Row(
+                    key: ValueKey<int>(_step),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(
+                        width: 15,
+                        height: 15,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      const SizedBox(width: 11),
+                      Text(
+                        _steps[_step],
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
               ],
             ),
           ),
