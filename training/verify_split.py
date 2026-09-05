@@ -1,10 +1,16 @@
 """Audit a prepared dataset before training.
 
-Two ways a split quietly ruins a model, both invisible in the accuracy number:
+Three ways a split quietly ruins a model, all invisible in the accuracy number:
 
+* the same subject in two splits, so the model can score on test by
+  recognising a face and background it memorised in train;
 * a synthetic image in val or test, which measures the synthesiser rather than
   the problem;
-* the same photo in two splits, which measures memorisation.
+* the same photo in two splits, which measures memorisation outright.
+
+The first is the one that matters most when the whole dataset is generated,
+because matched pairs differ only in the food on the teeth: everything else
+about them is a giveaway the model can latch onto instead.
 
     python verify_split.py --dataset dataset
 
@@ -20,6 +26,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from contract import CLASS_NAMES
+from prepare_dataset import group_key
 from synthesize_dirty import SYNTH_TAG
 
 SPLITS = ("train", "val", "test")
@@ -44,6 +51,7 @@ def main() -> int:
     seen: dict[str, list[str]] = defaultdict(list)
     counts: dict[tuple[str, str], int] = {}
     synthetic: dict[str, int] = defaultdict(int)
+    group_splits: dict[str, set[str]] = defaultdict(set)
 
     for split in SPLITS:
         for class_name in CLASS_NAMES:
@@ -63,6 +71,15 @@ def main() -> int:
                             f"synthetic image in {split}: {path.name}"
                         )
                 seen[digest(path)].append(f"{split}/{class_name}/{path.name}")
+                group_splits[group_key(path)].add(split)
+
+    for group, splits in sorted(group_splits.items()):
+        if len(splits) > 1:
+            problems.append(
+                f"subject '{group}' appears in {', '.join(sorted(splits))} - "
+                f"the model can memorise it in one and be scored on it in "
+                f"another"
+            )
 
     for locations in seen.values():
         splits = {loc.split("/", 1)[0] for loc in locations}

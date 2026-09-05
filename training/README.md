@@ -134,6 +134,32 @@ measurement rather than training. Around 30 in the test set is the point below
 which the score is mostly noise, and `verify_split.py` warns when you are under
 it.
 
+## A dataset with no real photographs
+
+If every image is generated, the evaluation cannot tell you how the model
+behaves on a real camera frame. It measures how well the model recognises the
+generator. Train on that basis knowingly: the accuracy printed at the end of
+`train.py` is an optimistic bound, not a field result.
+
+Two things still make the number worth reading, and the tooling enforces both.
+
+**Split by subject, never by file.** Matched pairs differ only in the food on
+the teeth, so the same face, background, lighting and clothing appear on both
+sides. Shuffling files independently drops `pair01_clean` into train and
+`pair01_dirty` into test, and the model can then score on test by recognising
+what it memorised in train. `prepare_dataset.py` groups by subject, derived
+from the filename, and moves whole subjects; `verify_split.py` fails the split
+if any subject straddles the wall.
+
+Name files so the grouping works: `pair01_clean.jpg`, `pair01_dirty.jpg`.
+Anything not matching the convention becomes its own subject, which is safe
+but wastes the protection.
+
+**Vary the subjects, not the shots.** Thirty generated people beat three
+hundred images of one. When the split is by identity, a dataset of few
+subjects leaves almost nothing to test on, and `prepare_dataset.py` refuses a
+split it cannot make.
+
 ## 2. Split
 
 ```bash
