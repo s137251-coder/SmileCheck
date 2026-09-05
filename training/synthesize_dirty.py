@@ -48,6 +48,72 @@ PALETTE: tuple[tuple[int, int, int], ...] = (
 )
 
 
+def _teeth_component(mask: np.ndarray) -> np.ndarray:
+    """Picks the blob that is actually the teeth.
+
+    Two things defeat a naive "largest blob": heavy staining splits the teeth
+    into one island per tooth, and a lit cheek at the edge of a close crop can
+    be a single larger island. So the mask is first dilated to bridge the gaps
+    between neighbouring teeth, then candidates are scored by size *and* by how
+    central they are, since the app's guide frame puts the mouth in the middle.
+    Scanline flood fill, to avoid a scipy dependency.
+    """
+    height, width = mask.shape
+
+    bridged = (
+        np.asarray(
+            Image.fromarray((mask * 255).astype(np.uint8)).filter(
+                ImageFilter.MaxFilter(9)
+            )
+        )
+        > 127
+    )
+
+    seen = np.zeros_like(bridged, dtype=bool)
+    best_score = 0.0
+    best: np.ndarray | None = None
+    centre_y, centre_x = height / 2, width / 2
+    diagonal = math.hypot(height, width)
+
+    for start_y in range(height):
+        for start_x in range(width):
+            if not bridged[start_y, start_x] or seen[start_y, start_x]:
+                continue
+            stack = [(start_y, start_x)]
+            seen[start_y, start_x] = True
+            ys: list[int] = []
+            xs: list[int] = []
+            while stack:
+                y, x = stack.pop()
+                ys.append(y)
+                xs.append(x)
+                for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                    if (
+                        0 <= ny < height
+                        and 0 <= nx < width
+                        and bridged[ny, nx]
+                        and not seen[ny, nx]
+                    ):
+                        seen[ny, nx] = True
+                        stack.append((ny, nx))
+
+            offset = math.hypot(
+                (sum(ys) / len(ys)) - centre_y, (sum(xs) / len(xs)) - centre_x
+            )
+            # Halves the score for a blob one quarter-diagonal off centre.
+            score = len(ys) / (1.0 + (offset / diagonal) * 4.0)
+            if score > best_score:
+                best_score = score
+                blob = np.zeros_like(bridged)
+                blob[np.array(ys), np.array(xs)] = True
+                best = blob
+
+    if best is None:
+        return np.zeros_like(mask)
+    # Back to the real pixels: the dilation was only for grouping.
+    return best & mask
+
+
 def find_teeth(image: Image.Image, rng: random.Random) -> np.ndarray | None:
     """Returns a boolean mask of likely teeth pixels, or None if unconvinced.
 
@@ -80,7 +146,7 @@ def find_teeth(image: Image.Image, rng: random.Random) -> np.ndarray | None:
     eroded = Image.fromarray((mask * 255).astype(np.uint8)).filter(
         ImageFilter.MinFilter(5)
     )
-    shrunk = np.asarray(eroded) > 127
+    shrunk = _teeth_component(np.asarray(eroded) > 127)
     if shrunk.sum() < 200:
         return None
 
