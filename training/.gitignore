@@ -5,6 +5,8 @@ raw/
 
 # Build outputs
 out/
+out_*/
+dataset_*/
 *.tflite
 *.keras
 *.h5

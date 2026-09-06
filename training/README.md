@@ -160,6 +160,38 @@ hundred images of one. When the split is by identity, a dataset of few
 subjects leaves almost nothing to test on, and `prepare_dataset.py` refuses a
 split it cannot make.
 
+## What 30 subjects actually produced
+
+Trained on 2026-09-06 with 30 paired subjects (22 train / 4 val / 4 test).
+Three regimes, evaluated on the 16 held-out real images:
+
+| run | held-out accuracy | P(dirty) on clean | on dirty | separation |
+|---|---|---|---|---|
+| real images, head + fine-tune | 0.562 | 0.595 | 0.712 | +0.118 |
+| plus 137 synthetic dirty | 0.562 | 0.657 | 0.769 | +0.112 |
+| real images, backbone frozen | 0.562 | 0.427 | 0.549 | +0.122 |
+
+All three land on the same number. That convergence is the finding: this is a
+data ceiling, not a tuning problem. The model does lean the right way — dirty
+scores above clean every time — but by roughly 0.12, nowhere near enough to
+put a threshold on.
+
+The synthetic run is the instructive one. Train accuracy reached 0.810 while
+held-out stayed at chance, and on real dirty images it scored barely higher
+than on clean. With 137 of 159 training positives synthetic, it learned the
+synthesiser. Synthetics multiply the count without adding a single new
+subject, and the count was never the binding constraint.
+
+**No model ships from this.** A classifier at 0.56 would give the app
+confident wrong answers, which is worse than the honest fallback the app
+already has: `ModelContract` rejects a model that fails its checks and the
+UI says it is in demo mode rather than inventing a verdict.
+
+What would change the picture is more *subjects*, not more images per
+subject. A few hundred people, ideally real photographs rather than
+generated ones, since val and test here are Gemini output and so the numbers
+above are an optimistic ceiling rather than a field measurement.
+
 ## 1b-check. Validate a delivered batch first
 
 ```bash
