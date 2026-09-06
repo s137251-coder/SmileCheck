@@ -40,6 +40,8 @@ verdict was produced.
 > outputs. It does not meet the contract, so the app runs in demo mode until a
 > real binary clean/dirty model is trained and dropped in at the path above.
 > That is the one remaining piece of work before SmileCheck gives real verdicts.
+> The pipeline for producing one lives in [`../training/`](../training/README.md):
+> collect photos, train, verify against this contract, drop the file in.
 
 ## Runtime flow
 

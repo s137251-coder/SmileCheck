@@ -1,0 +1,16 @@
+# Training photos are pictures of people's mouths. They are never committed:
+# the whole point of SmileCheck is that such images stay local.
+dataset/
+raw/
+
+# Build outputs
+out/
+out_*/
+dataset_*/
+*.tflite
+*.keras
+*.h5
+.venv/
+__pycache__/
+cropped/
+*.onnx
