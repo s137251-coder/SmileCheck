@@ -37,7 +37,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.smilecheck"
+    namespace = "com.smilecheck.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
