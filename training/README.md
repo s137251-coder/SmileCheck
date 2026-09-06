@@ -160,6 +160,23 @@ hundred images of one. When the split is by identity, a dataset of few
 subjects leaves almost nothing to test on, and `prepare_dataset.py` refuses a
 split it cannot make.
 
+## 1b-check. Validate a delivered batch first
+
+```bash
+python validate_batch.py path/to/batch.zip
+python validate_batch.py path/to/batch.zip --accept-into raw
+```
+
+Every check exists because a real delivery failed it: images at 128x138 where
+a mouth crop is 70x43 and residue is sub-pixel; filenames printed into the
+pixels, which a model learns to read instead of looking at teeth; tiles sliced
+out of a gallery screenshot, each holding fragments of two faces; and pairs
+that were regenerated rather than edited, so clean and dirty differ everywhere
+and the model can separate them without seeing a tooth.
+
+`--accept-into` copies the batch into `raw/clean` and `raw/dirty` only if
+everything passes, so a bad batch cannot reach the dataset by accident.
+
 ## 1c. Crop to the mouth
 
 ```bash
