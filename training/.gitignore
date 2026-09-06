@@ -10,3 +10,5 @@ out/
 *.h5
 .venv/
 __pycache__/
+cropped/
+*.onnx

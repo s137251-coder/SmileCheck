@@ -160,10 +160,38 @@ hundred images of one. When the split is by identity, a dataset of few
 subjects leaves almost nothing to test on, and `prepare_dataset.py` refuses a
 split it cannot make.
 
+## 1c. Crop to the mouth
+
+```bash
+python crop_mouth.py --in raw/clean --out cropped/clean
+python crop_mouth.py --in raw/dirty --out cropped/dirty
+```
+
+The app resizes the whole captured frame to 224x224. In an arm's-length selfie
+that leaves the teeth around 25 pixels tall and a piece of food two or three
+pixels across, which caps accuracy no matter how much data is thrown at it.
+Cropping to the mouth lifts that ceiling.
+
+Uses OpenCV's YuNet detector, which returns mouth-corner landmarks directly, so
+the crop follows the mouth rather than assuming a centred face. The model file
+is fetched once on first run. Filenames are preserved, so subject grouping
+survives.
+
+Run everything downstream on `cropped/`, not `raw/`.
+
+**The app must apply the same crop before inference.** Training on mouths and
+running on whole frames is the same mismatch in the other direction, and it
+would be invisible until the app met a real user.
+
+Note that `synthesize_dirty.py` and `inpaint_dirty.py` locate teeth by
+brightness and low saturation. That works on a mouth crop and fails on a whole
+selfie, where pale skin and lit walls match the same rule, so run them on
+`cropped/` too.
+
 ## 2. Split
 
 ```bash
-python prepare_dataset.py --raw raw --out dataset
+python prepare_dataset.py --raw cropped --out dataset
 python verify_split.py --dataset dataset
 ```
 

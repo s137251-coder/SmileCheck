@@ -8,3 +8,4 @@ tensorflow==2.19.0
 numpy>=1.26,<3
 pillow>=10.0
 requests>=2.31
+opencv-python-headless>=4.10
