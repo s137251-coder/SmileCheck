@@ -42,6 +42,28 @@ ASPECT_TOLERANCE = 0.08
 NAME = re.compile(r"^(pair\d+)_(clean|dirty)\.(jpg|jpeg|png)$", re.IGNORECASE)
 
 
+def count_faces(image: Image.Image) -> int:
+    """Faces YuNet finds. More than one means the file is a composite.
+
+    A tile sliced out of a grid carries a fragment of a neighbouring person,
+    and that fragment is often still detectable as a face.
+    """
+    try:
+        import cv2
+
+        from crop_mouth import detector, ensure_model
+
+        det = detector(ensure_model(Path(__file__).with_name(
+            "face_detection_yunet.onnx"
+        )))
+        bgr = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2BGR)
+        det.setInputSize((image.width, image.height))
+        _, faces = det.detect(bgr)
+        return 0 if faces is None else len(faces)
+    except Exception:
+        return -1  # detector unavailable; not a reason to fail the batch
+
+
 def load(source: Path) -> dict[str, Image.Image]:
     """Reads a zip or a folder into name -> image."""
     images: dict[str, Image.Image] = {}
@@ -65,6 +87,18 @@ def load(source: Path) -> dict[str, Image.Image]:
                 except Exception:
                     continue
     return images
+
+
+def is_blank(image: Image.Image) -> float | None:
+    """Standard deviation, when the image carries no picture at all.
+
+    A batch once arrived as five correctly-sized files that were a single flat
+    grey: right dimensions, right aspect, no text, no seam, and nothing in
+    them. Everything downstream would have accepted those.
+    """
+    grey = np.asarray(image.convert("L").resize((256, 276)), dtype=float)
+    deviation = float(grey.std())
+    return deviation if deviation < 8 else None
 
 
 def has_caption(image: Image.Image) -> int | None:
@@ -111,6 +145,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument(
+        "--clean-only",
+        action="store_true",
+        help="a batch of clean images with no dirty counterpart yet",
+    )
+    parser.add_argument(
         "--accept-into",
         type=Path,
         help="if every check passes, copy the images into this raw/ folder, "
@@ -123,6 +162,7 @@ def main() -> int:
         sys.exit(f"No readable images in {args.source}")
 
     problems: list[str] = []
+    warnings: list[str] = []
     pairs: dict[str, dict[str, Image.Image]] = defaultdict(dict)
 
     print(f"\n{len(images)} files in {args.source.name}\n")
@@ -135,6 +175,11 @@ def main() -> int:
         pairs[match.group(1)][match.group(2).lower()] = image
 
         notes = []
+        flat = is_blank(image)
+        if flat is not None:
+            # Nothing else is worth checking on an empty picture.
+            problems.append(f"{name}: blank image (std {flat:.2f})")
+            continue
         w, h = image.size
         if w < MIN_WIDTH or h < MIN_HEIGHT:
             notes.append(f"too small ({w}x{h})")
@@ -142,13 +187,47 @@ def main() -> int:
             notes.append(f"not 9:16 ({w / h:.2f})")
         caption = has_caption(image)
         if caption is not None:
-            notes.append(f"text in the pixels at row ~{caption}")
+            # A warning, not a failure. The test cannot reliably tell a
+            # printed caption from a dark collar or a bright window: measured
+            # against known-good and known-bad batches the two overlap. It
+            # still points a human at the right row, so it is reported and
+            # left to the eye.
+            warnings.append(f"{name}: possible text in the pixels at row "
+                            f"~{caption} - check by eye")
         seam = seam_strength(image)
         if seam > 45:
             notes.append(f"tile seam (jump {seam:.0f})")
+        faces = count_faces(image)
+        if faces == 0:
+            notes.append("no face found")
+        elif faces > 1:
+            notes.append(f"{faces} faces - the file is a composite")
 
         if notes:
             problems.append(f"{name}: " + "; ".join(notes))
+
+    if args.clean_only:
+        print("files:")
+        for key in sorted(pairs):
+            for side, image in pairs[key].items():
+                w, h = image.size
+                print(f"  {key}_{side}  {w}x{h}  {count_faces(image)} face(s)")
+        print()
+        if problems:
+            print(f"FAIL - {len(problems)} problems\n")
+            for problem in problems[:25]:
+                print(f"  {problem}")
+            print()
+            return 1
+        print("PASS - every file is usable\n")
+        if args.accept_into:
+            for key, sides in pairs.items():
+                for side, image in sides.items():
+                    folder = args.accept_into / side
+                    folder.mkdir(parents=True, exist_ok=True)
+                    image.save(folder / f"{key}_{side}.jpg", quality=95)
+            print(f"  copied into {args.accept_into}/\n")
+        return 0
 
     print("pairs:")
     for key in sorted(pairs):
