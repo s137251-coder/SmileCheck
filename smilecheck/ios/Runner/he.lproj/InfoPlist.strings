@@ -1,0 +1,5 @@
+/* Shown by iOS in the camera permission prompt. */
+"NSCameraUsageDescription" = "SmileCheck משתמשת במצלמה כדי להסתכל על החיוך שלך. התמונה מנותחת על המכשיר הזה ולעולם לא נשלחת או נשמרת.";
+
+/* Name under the app icon. Kept in Latin script, like the in-app branding. */
+"CFBundleDisplayName" = "SmileCheck";
