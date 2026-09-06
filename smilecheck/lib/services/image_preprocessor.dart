@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'dart:ui' show Rect, Size;
+
 import 'package:flutter/foundation.dart';
 import 'package:image/image.dart' as img;
 
@@ -25,11 +27,15 @@ class FramePayload {
 
 /// Request sent to the decode isolate.
 class _FrameRequest {
-  const _FrameRequest(this.path, this.width, this.height);
+  const _FrameRequest(this.path, this.width, this.height, this.crop);
 
   final String path;
   final int width;
   final int height;
+
+  /// Region of the source frame to analyse, in source pixels. Null analyses
+  /// the whole frame.
+  final Rect? crop;
 }
 
 /// Width the statistics pass runs at. Measuring a downscaled copy keeps a
@@ -46,8 +52,22 @@ FramePayload _decodeFrame(_FrameRequest request) {
     throw const FormatException('The captured image could not be decoded.');
   }
 
+  // Crop first, then resize. Resizing the whole frame would spend almost all
+  // of the 224 pixels on cheeks and background, leaving the teeth a couple of
+  // dozen pixels tall and any residue below one.
+  final region = request.crop;
+  final framed = region == null
+      ? decoded
+      : img.copyCrop(
+          decoded,
+          x: region.left.round().clamp(0, decoded.width - 1),
+          y: region.top.round().clamp(0, decoded.height - 1),
+          width: region.width.round().clamp(1, decoded.width),
+          height: region.height.round().clamp(1, decoded.height),
+        );
+
   final resized = img.copyResize(
-    decoded,
+    framed,
     width: request.width,
     height: request.height,
     interpolation: img.Interpolation.cubic,
@@ -68,7 +88,7 @@ FramePayload _decodeFrame(_FrameRequest request) {
     rgb: rgb,
     width: request.width,
     height: request.height,
-    stats: _measure(decoded),
+    stats: _measure(framed),
   );
 }
 
@@ -131,14 +151,17 @@ class ImagePreprocessor {
     String imagePath, {
     int width = 224,
     int height = 224,
+    Rect? crop,
   }) {
-    return compute(_decodeFrame, _FrameRequest(imagePath, width, height));
+    return compute(
+      _decodeFrame,
+      _FrameRequest(imagePath, width, height, crop),
+    );
   }
 
-  /// Measures a frame without preparing model input, for the fallback path.
-  Future<ImageStats> measure(String imagePath) async {
-    final payload = await prepare(imagePath);
-    return payload.stats;
+  /// Reads the pixel dimensions of a capture without decoding all of it.
+  static Future<Size?> frameSize(String imagePath) async {
+    return compute(_readSize, imagePath);
   }
 
   /// Shapes [payload] into the nested `[height][width][channels]` tensor the
@@ -177,4 +200,11 @@ class ImagePreprocessor {
       growable: false,
     );
   }
+}
+
+/// Reads just the header so the mouth can be located in source coordinates.
+Size? _readSize(String path) {
+  final decoded = img.decodeImage(File(path).readAsBytesSync());
+  if (decoded == null) return null;
+  return Size(decoded.width.toDouble(), decoded.height.toDouble());
 }

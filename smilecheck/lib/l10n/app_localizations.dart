@@ -445,6 +445,12 @@ abstract class L {
   /// **'The frame could not be processed in time. Try again in better light.'**
   String get reasonTimedOut;
 
+  /// No description provided for @mouthNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No face was found in the frame, so the area under the guide was analysed instead. Line your face up inside the frame for a better reading.'**
+  String get mouthNotFound;
+
   /// No description provided for @hintTooDark.
   ///
   /// In en, this message translates to:

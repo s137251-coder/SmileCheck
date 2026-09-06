@@ -210,6 +210,10 @@ class LHe extends L {
       'לא הספקנו לעבד את התמונה בזמן. נסו שוב בתאורה טובה יותר.';
 
   @override
+  String get mouthNotFound =>
+      'לא נמצאו פנים בתמונה, ולכן נותח האזור שמתחת למסגרת. יישרו את הפנים בתוך המסגרת לקריאה טובה יותר.';
+
+  @override
   String get hintTooDark => 'התמונה כהה. התקרבו לאור.';
 
   @override

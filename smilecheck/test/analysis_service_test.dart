@@ -136,6 +136,23 @@ void main() {
     });
   });
 
+  group('mouth crop', () {
+    test('a result records whether the crop followed a face', () {
+      const stats = ImageStats(brightness: 0.5, contrast: 0.2, sharpness: 0.1);
+
+      final located = AnalysisResult.fromModel(
+        score: 80,
+        stats: stats,
+        mouthLocated: true,
+      );
+      final guessed = AnalysisResult.fromModel(score: 80, stats: stats);
+
+      expect(located.mouthLocated, isTrue);
+      expect(guessed.mouthLocated, isFalse);
+      expect(guessed.toJson()['mouthLocated'], false);
+    });
+  });
+
   group('ImageStats', () {
     test('scores a well-exposed, sharp frame highly', () {
       const good = ImageStats(brightness: 0.55, contrast: 0.24, sharpness: 0.13);

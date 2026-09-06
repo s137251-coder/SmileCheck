@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../core/guide_geometry.dart';
 
 /// The aiming frame drawn over the live preview (spec 6.2).
 ///
@@ -52,18 +53,11 @@ class _SmileGuidePainter extends CustomPainter {
   /// 0..1 breathing value driving the bracket brightness.
   final double glow;
 
-  static const double _widthFactor = 0.78;
-  static const double _aspect = 1.22;
-
   @override
   void paint(Canvas canvas, Size size) {
-    final windowWidth = size.width * _widthFactor;
-    final windowHeight = windowWidth * _aspect;
-    final window = Rect.fromCenter(
-      center: Offset(size.width / 2, size.height * 0.46),
-      width: windowWidth,
-      height: windowHeight,
-    );
+    // Shared with the crop the analysis actually uses, so the frame the user
+    // aims at and the region that gets analysed are the same rectangle.
+    final window = GuideGeometry.window(size);
     final rounded = RRect.fromRectAndRadius(window, const Radius.circular(34));
 
     // Dim the surround by punching the window out of a full-bleed scrim.
@@ -137,11 +131,7 @@ class _SmileGuidePainter extends CustomPainter {
 
   /// A dashed smile arc in the lower third, where the mouth should sit.
   void _paintMouthHint(Canvas canvas, Rect window) {
-    final arcRect = Rect.fromCenter(
-      center: Offset(window.center.dx, window.center.dy + window.height * 0.16),
-      width: window.width * 0.5,
-      height: window.height * 0.22,
-    );
+    final arcRect = GuideGeometry.mouthHint(window);
 
     final paint = Paint()
       ..style = PaintingStyle.stroke

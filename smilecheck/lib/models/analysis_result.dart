@@ -53,6 +53,7 @@ class AnalysisResult {
     this.reasonDetail,
     this.stats = ImageStats.zero,
     this.imagePath,
+    this.mouthLocated = false,
   });
 
   /// 0..100. A cleanliness probability in [AnalysisMode.model], a capture
@@ -72,6 +73,11 @@ class AnalysisResult {
   final ImageStats stats;
   final String? imagePath;
 
+  /// True when a face was found and the analysed crop followed the mouth
+  /// landmarks. False means the aiming frame's geometry was used instead,
+  /// which is a guess about where the user put their mouth.
+  final bool mouthLocated;
+
   bool get isModelBacked => mode == AnalysisMode.model;
 
   /// Builds the clean / needs-check verdict from a model probability, using the
@@ -80,6 +86,7 @@ class AnalysisResult {
     required double score,
     required ImageStats stats,
     String? imagePath,
+    bool mouthLocated = false,
   }) {
     final clean = score >= AnalysisThresholds.clean;
     return AnalysisResult(
@@ -89,6 +96,7 @@ class AnalysisResult {
       reason: clean ? ResultReason.modelClean : ResultReason.modelNeedsCheck,
       stats: stats,
       imagePath: imagePath,
+      mouthLocated: mouthLocated,
     );
   }
 
@@ -100,6 +108,7 @@ class AnalysisResult {
     int? reasonValue,
     String? reasonDetail,
     String? imagePath,
+    bool mouthLocated = false,
   }) {
     return AnalysisResult(
       score: stats.captureQuality,
@@ -110,6 +119,7 @@ class AnalysisResult {
       reasonDetail: reasonDetail,
       stats: stats,
       imagePath: imagePath,
+      mouthLocated: mouthLocated,
     );
   }
 
@@ -130,6 +140,7 @@ class AnalysisResult {
         'reason': reason.name,
         if (reasonValue != null) 'reasonValue': reasonValue,
         if (reasonDetail != null) 'reasonDetail': reasonDetail,
+        'mouthLocated': mouthLocated,
         'stats': stats.toJson(),
       };
 }
