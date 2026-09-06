@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' show AppLifecycleState;
 
 import 'package:camera/camera.dart';
@@ -33,6 +34,13 @@ enum CameraIssue { none, listFailed, startFailed, captureFailed, noFlash }
 /// it: doing so tears the controller out from under the screen that replaces
 /// them.
 class CameraService extends ChangeNotifier {
+  /// Ceilings on the two calls that can hang. Without them a wedged open
+  /// leaves [status] on [CameraStatus.initialising] forever, and because
+  /// `initialize` returns early in that state, every retry is a no-op and the
+  /// screen sits on a spinner with no way back.
+  static const Duration _listTimeout = Duration(seconds: 8);
+  static const Duration _openTimeout = Duration(seconds: 15);
+
   CameraController? _controller;
   List<CameraDescription> _cameras = const [];
   int _cameraIndex = 0;
@@ -93,8 +101,13 @@ class CameraService extends ChangeNotifier {
 
     try {
       if (_cameras.isEmpty) {
-        _cameras = await availableCameras();
+        _cameras = await availableCameras().timeout(_listTimeout);
       }
+    } on TimeoutException {
+      _set(CameraStatus.failed,
+          issue: CameraIssue.listFailed,
+          detail: 'timed out after ${_listTimeout.inSeconds}s');
+      return;
     } on Object catch (error) {
       _set(CameraStatus.failed,
           issue: CameraIssue.listFailed, detail: '$error');
@@ -127,11 +140,16 @@ class CameraService extends ChangeNotifier {
         enableAudio: false,
         imageFormatGroup: ImageFormatGroup.jpeg,
       );
-      await controller.initialize();
+      await controller.initialize().timeout(_openTimeout);
 
       _controller = controller;
       _torchOn = false;
       _set(CameraStatus.ready);
+    } on TimeoutException {
+      _controller = null;
+      _set(CameraStatus.failed,
+          issue: CameraIssue.startFailed,
+          detail: 'timed out after ${_openTimeout.inSeconds}s');
     } on CameraException catch (error) {
       _controller = null;
       _set(CameraStatus.failed,
