@@ -211,6 +211,10 @@ class LEn extends L {
       'The frame could not be processed in time. Try again in better light.';
 
   @override
+  String get mouthNotFound =>
+      'No face was found in the frame, so the area under the guide was analysed instead. Line your face up inside the frame for a better reading.';
+
+  @override
   String get hintTooDark => 'The frame is dark. Move towards more light.';
 
   @override

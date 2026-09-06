@@ -7,6 +7,7 @@ import 'package:tflite_flutter/tflite_flutter.dart';
 import '../models/analysis_result.dart';
 import '../models/image_stats.dart';
 import 'image_preprocessor.dart';
+import 'mouth_locator.dart';
 
 /// Whether the bundled asset can actually produce a SmileCheck verdict.
 enum ModelStatus {
@@ -112,12 +113,16 @@ class ModelContract {
 /// matching the documented contract loaded and ran, the result comes back as
 /// [AnalysisMode.demo] with the reason attached.
 class AnalysisService {
-  AnalysisService({ImagePreprocessor? preprocessor})
-      : _preprocessor = preprocessor ?? ImagePreprocessor();
+  AnalysisService({
+    ImagePreprocessor? preprocessor,
+    MouthLocator? mouthLocator,
+  })  : _preprocessor = preprocessor ?? ImagePreprocessor(),
+        _mouthLocator = mouthLocator ?? MouthLocator();
 
   static const String modelAssetPath = 'assets/models/smilecheck.tflite';
 
   final ImagePreprocessor _preprocessor;
+  final MouthLocator _mouthLocator;
 
   Interpreter? _interpreter;
   ModelReport _report = const ModelReport(
@@ -142,13 +147,23 @@ class AnalysisService {
     }
 
     final FramePayload payload;
+    bool located = false;
     try {
       final shape = _report.inputShape;
       final hasShape = shape != null && shape.length >= 3;
+
+      // Find the mouth before decoding for the model: the crop decides what
+      // the 224 pixels are spent on.
+      final size = await ImagePreprocessor.frameSize(imagePath);
+      final crop =
+          size == null ? null : await _mouthLocator.locate(imagePath, size);
+      located = crop?.fromLandmarks ?? false;
+
       payload = await _preprocessor.prepare(
         imagePath,
         width: hasShape ? shape[2] : 224,
         height: hasShape ? shape[1] : 224,
+        crop: crop?.rect,
       );
     } on Object catch (error) {
       return _remember(AnalysisResult.failure(
@@ -164,6 +179,7 @@ class AnalysisService {
           score: probability * 100,
           stats: payload.stats,
           imagePath: imagePath,
+          mouthLocated: located,
         ));
       }
     }
@@ -174,6 +190,7 @@ class AnalysisService {
       reasonValue: _report.reasonValue,
       reasonDetail: _report.reasonDetail,
       imagePath: imagePath,
+      mouthLocated: located,
     ));
   }
 
@@ -298,5 +315,6 @@ class AnalysisService {
   void dispose() {
     _interpreter?.close();
     _interpreter = null;
+    _mouthLocator.dispose();
   }
 }

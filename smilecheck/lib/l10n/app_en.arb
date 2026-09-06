@@ -101,6 +101,7 @@
   },
   "reasonTimedOut": "The frame could not be processed in time. Try again in better light.",
 
+  "mouthNotFound": "No face was found in the frame, so the area under the guide was analysed instead. Line your face up inside the frame for a better reading.",
   "hintTooDark": "The frame is dark. Move towards more light.",
   "hintTooBright": "The frame is over-exposed. Step out of direct light.",
   "hintTooSoft": "The frame looks soft. Hold steady and retake.",

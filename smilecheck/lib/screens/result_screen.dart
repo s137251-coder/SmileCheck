@@ -203,6 +203,9 @@ class _NotesPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final l = L.of(context);
     final hint = result.stats.primaryHint;
+    // A crop that did not follow the face is a guess about where the mouth
+    // was, and the user deserves to know that shaped the reading.
+    final guessedCrop = !result.mouthLocated && result.stats.isEmpty == false;
 
     return GlassPanel(
       borderColor: color.withValues(alpha: 0.22),
@@ -222,6 +225,26 @@ class _NotesPanel extends StatelessWidget {
               ),
             ],
           ),
+          if (guessedCrop) ...[
+            const Divider(height: 26, color: AppColors.border),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.face_retouching_off_outlined,
+                  size: 19,
+                  color: AppColors.caution,
+                ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Text(
+                    l.mouthNotFound,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (hint != null) ...[
             const Divider(height: 26, color: AppColors.border),
             Row(
